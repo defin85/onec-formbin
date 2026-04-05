@@ -35,6 +35,15 @@ This repo therefore starts with a raw-first codec:
 uv sync
 ```
 
+Requires Python 3.12+.
+
+## Project docs
+
+- `docs/repo-map.md`: module map and change guidance
+- `docs/verification.md`: bootstrap, smoke, and full verification commands
+- `tests/fixtures/README.md`: fixture matrix and verified support boundaries
+- `docs/adr/0001-raw-first.md`: raw-first architecture decision
+
 ## CLI
 
 ```bash
@@ -133,6 +142,8 @@ project-specific code.
 ## Development
 
 ```bash
+uv sync
+uv run formbin inspect tests/fixtures/common-indicator.Form.bin
 uv run ruff check .
 uv run pytest
 ```

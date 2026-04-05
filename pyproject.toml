@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "onec-formbin"
+version = "0.1.0"
+description = "Standalone tool for inspecting, unpacking, and repacking 1C Form.bin containers."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.12.0,<3.0.0",
+    "typer>=0.19.2,<1.0.0",
+]
+
+[project.scripts]
+formbin = "onec_formbin.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0,<9.0.0",
+    "ruff>=0.12.0,<1.0.0",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
