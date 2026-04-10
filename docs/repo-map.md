@@ -9,6 +9,11 @@ before reading code file-by-file.
 - `tests/`: fixture-backed behavior tests
 - `tests/fixtures/`: local `Form.bin` samples and support matrix
 - `docs/adr/0001-raw-first.md`: accepted raw-first architecture decision
+- `docs/agent/`: repo-local onboarding and review router for managed feature work
+- `automation/context/`: summary-first process map for agents
+- `scripts/qa/`: onboarding and process integrity entrypoints
+- `scripts/feature_loop.py`: eval-driven keep/revert runner
+- `ai/features/`: managed feature packs and case manifests
 
 ## Main code paths
 
@@ -77,3 +82,5 @@ make raw container safety depend on AST semantics.
   to running tests.
 - If a change broadens support claims, update `README.md` and
   `tests/fixtures/README.md` together.
+- If a change is driven through the eval loop, start from `docs/agent/index.md`
+  and use the repo-owned `Makefile` targets instead of ad hoc commands.

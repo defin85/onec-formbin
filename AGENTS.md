@@ -1,5 +1,10 @@
 # Repo Instructions
 
+## Start Here
+- For repository onboarding, open `docs/agent/index.md`.
+- Read-only onboarding snapshot: `make codex-onboard`.
+- First safe process-layer verification: `make agent-verify`.
+
 ## Language
 - Keep code, docs, and CLI messages in English.
 - Keep user-facing status updates concise.
@@ -16,7 +21,8 @@
 - `src/onec_formbin/form_ast.py`: experimental `form.raw <-> AST` layer; keep separate from the raw-first codec.
 - `tests/`: fixture-backed behavior coverage.
 - `docs/adr/0001-raw-first.md`: architecture decision for raw-first handling.
-- `docs/repo-map.md`, `docs/verification.md`, `code_review.md`: agent-facing references for navigation, verification, and review.
+- `docs/repo-map.md`, `docs/verification.md`, `code_review.md`: core agent-facing references for navigation, verification, and review.
+- `docs/agent/`, `automation/context/`, `scripts/qa/`, `scripts/feature_loop.py`, `ai/features/`: eval-driven process layer for managed feature work.
 
 ## Setup
 - Run `uv sync` before first use in a fresh clone.
@@ -37,6 +43,7 @@
 - Run `uv run pytest` for behavior changes.
 - Run `uv run ruff check .` for linting.
 - Run `uv run formbin inspect tests/fixtures/common-indicator.Form.bin` as the basic CLI smoke check.
+- Run `make agent-verify` before relying on the eval-driven feature loop surface.
 - If a limitation remains, document it in `README.md`.
 
 ## Definition of done

@@ -41,8 +41,20 @@ Requires Python 3.12+.
 
 - `docs/repo-map.md`: module map and change guidance
 - `docs/verification.md`: bootstrap, smoke, and full verification commands
+- `docs/agent/index.md`: repo-local router for the eval-driven process layer
 - `tests/fixtures/README.md`: fixture matrix and verified support boundaries
 - `docs/adr/0001-raw-first.md`: raw-first architecture decision
+
+## Agent workflow
+
+```bash
+make codex-onboard
+make agent-verify
+make validate-feature FEATURE=raw-first-guard
+```
+
+For eval-driven feature work, use the feature packs under `ai/features/` together
+with the loop commands from `Makefile`.
 
 ## CLI
 
