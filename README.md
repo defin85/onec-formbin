@@ -7,8 +7,10 @@ Current focus:
 - deterministic container scanning
 - lossless unpack/pack
 - conservative text editing support for known UTF-8 payload records
+- descriptor JSON visibility for known descriptor records
 - container-aware diff
 - experimental `form.raw <-> AST` conversion
+- experimental semantic-form summary export
 
 Non-goals for the first version:
 - full semantic parsing of ordinary forms
@@ -41,6 +43,7 @@ Requires Python 3.12+.
 
 - `docs/repo-map.md`: module map and change guidance
 - `docs/verification.md`: bootstrap, smoke, and full verification commands
+- `docs/workspace-contract.md`: source of truth for the future LLM-editable workspace
 - `docs/agent/index.md`: repo-local router for the eval-driven process layer
 - `tests/fixtures/README.md`: fixture matrix and verified support boundaries
 - `docs/adr/0001-raw-first.md`: raw-first architecture decision
@@ -50,11 +53,18 @@ Requires Python 3.12+.
 ```bash
 make codex-onboard
 make agent-verify
+make feature-resume FEATURE=raw-first-guard
 make validate-feature FEATURE=raw-first-guard
+make validate-feature FEATURE=container-core-guard
+make validate-feature FEATURE=form-ast-guard
 ```
 
-For eval-driven feature work, use the feature packs under `ai/features/` together
-with the loop commands from `Makefile`.
+For eval-driven feature work, start with `raw-first-guard` for the repository's
+main feature, parsing `Form.bin` through the raw-first workflow. On a new
+session, run `make feature-resume FEATURE=raw-first-guard` first and continue
+the reported `RUN_ID` when one already exists. `make feature-start` now refuses
+to create a duplicate run when `feature-resume` already finds one. Switch to the
+narrower feature packs only when the change clearly stays inside that slice.
 
 ## CLI
 
@@ -67,6 +77,7 @@ uv run formbin diff a.Form.bin b.Form.bin
 uv run formbin diff /tmp/unpack-a /tmp/unpack-b --form-mode ast
 uv run formbin parse-form /tmp/formbin-unpack/records/004-form.raw -o /tmp/form.ast.json
 uv run formbin build-form /tmp/form.ast.json -o /tmp/form.raw
+uv run formbin semantic-form tests/fixtures/common-print-form.Form.bin -o /tmp/form.semantic.json
 ```
 
 ## Unpack layout
@@ -140,6 +151,38 @@ Current non-guarantees:
 For pointer-split forms where the `form` record continues in a later opaque
 record, run `parse-form` against the source `Form.bin` or the unpack root
 directory. A standalone `records/*-form.raw` file may be incomplete by design.
+
+## Experimental semantic model layer
+
+`semantic-form` builds an experimental semantic JSON summary from a `Form.bin`,
+an unpack root directory, or a standalone `form.raw` file.
+
+Current guarantees:
+- exposes container-level form and module metadata when the source has it;
+- carries descriptor JSON summaries for known `form` and `module` descriptors;
+- reports AST-derived structure counts, top-level shape, and string samples;
+- works with split-form continuation on the verified fixture corpus.
+
+Current non-guarantees:
+- full ordinary-form semantics;
+- semantic meaning of the leading descriptor integers;
+- stable field names for every future semantic expansion;
+- editing or rebuilding forms from the semantic JSON model.
+
+## Experimental descriptor JSON
+
+`inspect --json` now includes `descriptor_json` for known `form` and `module`
+descriptor records.
+
+Current guarantees:
+- known descriptor bodies are decoded as the observed `u64-pair-utf16le-v1`
+  shape;
+- unknown descriptor bodies fall back to opaque summaries without changing the
+  raw-first unpack/pack path.
+
+Current non-guarantees:
+- semantic meaning of the leading `u64` values;
+- support for every future descriptor-body layout.
 
 ## Status
 

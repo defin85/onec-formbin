@@ -4,6 +4,7 @@ from pathlib import Path
 
 from . import __version__
 from .container import ContainerError, decode_text_body, parse_file, render_header, sha256_bytes
+from .descriptor_json import parse_descriptor_body
 from .models import Manifest, ManifestRecord, PackedRecord, RecordKind, manifest_path
 from .workspace import (
     read_manifest,
@@ -21,23 +22,30 @@ def inspect_file(path: Path) -> dict:
         "prefix_sha256": sha256_bytes(container.prefix),
         "record_count": len(container.records),
         "records": [
-            {
-                "index": record.index,
-                "header_start": record.header_start,
-                "body_start": record.body_start,
-                "body_end": record.body_end,
-                "field1": record.field1,
-                "field2": record.field2,
-                "field3": record.field3,
-                "kind": record.kind.value,
-                "label": record.label,
-                "size_policy": record.size_policy.value,
-                "pointer_record_index": record.pointer_record_index,
-                "body_sha256": sha256_bytes(record.body),
-            }
+            inspect_record(record)
             for record in container.records
         ],
     }
+
+
+def inspect_record(record) -> dict:
+    info = {
+        "index": record.index,
+        "header_start": record.header_start,
+        "body_start": record.body_start,
+        "body_end": record.body_end,
+        "field1": record.field1,
+        "field2": record.field2,
+        "field3": record.field3,
+        "kind": record.kind.value,
+        "label": record.label,
+        "size_policy": record.size_policy.value,
+        "pointer_record_index": record.pointer_record_index,
+        "body_sha256": sha256_bytes(record.body),
+    }
+    if record.kind is RecordKind.DESCRIPTOR:
+        info["descriptor_json"] = parse_descriptor_body(record.body, label=record.label)
+    return info
 
 
 def unpack_file(source: Path, output_dir: Path) -> Manifest:

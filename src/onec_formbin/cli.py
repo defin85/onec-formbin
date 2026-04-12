@@ -10,6 +10,7 @@ from .container import ContainerError
 from .diffing import diff_paths, render_diff_report
 from .form_ast import build_form_file, parse_form_source, write_ast_json
 from .models import FormRenderMode
+from .semantic_form import build_semantic_file
 
 app = typer.Typer(help="Inspect, unpack, and repack 1C Form.bin containers.")
 
@@ -97,6 +98,13 @@ def build_form_command(path: Path, output: Path = typer.Option(..., "-o", "--out
     """Build form.raw text from experimental AST JSON."""
     build_form_file(path, output)
     typer.echo(f"wrote form.raw to {output}")
+
+
+@app.command("semantic-form")
+def semantic_form_command(path: Path, output: Path = typer.Option(..., "-o", "--output")) -> None:
+    """Build experimental semantic JSON from form.raw, an unpack dir, or Form.bin."""
+    build_semantic_file(path, output)
+    typer.echo(f"wrote semantic model to {output}")
 
 
 def main() -> None:

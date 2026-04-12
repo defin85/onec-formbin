@@ -14,6 +14,7 @@ printf 'Compile loop scripts\n'
   scripts/feature_loop.py \
   scripts/feature_loop_core.py \
   scripts/feature_loop_adapter.py \
+  scripts/feature_resume.py \
   scripts/start_run.py \
   scripts/validate_dataset.py
 

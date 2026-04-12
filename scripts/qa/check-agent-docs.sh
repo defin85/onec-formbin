@@ -38,6 +38,7 @@ require_path ai/features/README.md
 require_path scripts/feature_loop.py
 require_path scripts/feature_loop_core.py
 require_path scripts/feature_loop_adapter.py
+require_path scripts/feature_resume.py
 require_path scripts/start_run.py
 require_path scripts/validate_dataset.py
 require_path scripts/qa/codex-onboard.sh

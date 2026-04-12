@@ -15,6 +15,7 @@ existing repo docs.
 - `scripts/feature_loop.py`: the public loop CLI.
 - `scripts/feature_loop_core.py`: reusable loop logic including audit and clean replay.
 - `scripts/feature_loop_adapter.py`: optional adapter for `input -> expected` cases.
+- `scripts/feature_resume.py`: latest-run discovery for continuation after a new session.
 - `ai/features/<feature-id>/`: feature contracts, constraints, scorecards, and case manifests.
 
 ## Behavioral Contract
@@ -23,6 +24,8 @@ existing repo docs.
   `docs/verification.md`.
 - Managed feature work should use repo-owned entrypoints from `Makefile`,
   `scripts/qa/`, and `ai/features/` instead of one-off shell improvisation.
+- New sessions should resume an existing run through `make feature-resume`
+  before creating a new one.
 - Development evidence comes from dev checks and manifests.
 - Holdout evidence is reserved for confirmation.
 - The process layer stays thin: it routes work, but it does not replace the

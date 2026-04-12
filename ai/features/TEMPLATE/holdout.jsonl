@@ -1,0 +1,1 @@
+{"id":"template-holdout-001","task":"Replace this text with the holdout-only confirmation task.","verification":["replace-with-repo-owned-holdout-check-command"],"allowed_paths":["replace/with/real/path"],"notes":"Replace this starter case with a real holdout check."}

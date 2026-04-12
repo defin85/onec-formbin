@@ -2,7 +2,7 @@ SHELL := bash
 PYTHON ?= python3
 UV ?= uv run
 
-.PHONY: help codex-onboard agent-verify validate-feature feature-start feature-baseline feature-iteration feature-holdout feature-revert feature-ci-replay
+.PHONY: help codex-onboard agent-verify validate-feature feature-resume feature-start feature-baseline feature-iteration feature-holdout feature-revert feature-ci-replay
 
 help:
 	@printf '%s\n' \
@@ -10,6 +10,7 @@ help:
 		'  make codex-onboard' \
 		'  make agent-verify' \
 		'  make validate-feature FEATURE=<feature-id>' \
+		'  make feature-resume [FEATURE=<feature-id>]' \
 		'  make feature-start FEATURE=<feature-id>' \
 		'  make feature-baseline FEATURE=<feature-id> RUN_ID=<run-id>' \
 		'  make feature-iteration FEATURE=<feature-id> RUN_ID=<run-id>' \
@@ -29,8 +30,12 @@ validate-feature:
 		--dev "ai/features/$(FEATURE)/dev.jsonl" \
 		--holdout "ai/features/$(FEATURE)/holdout.jsonl"
 
+feature-resume:
+	@$(UV) python scripts/feature_resume.py --feature "$(or $(FEATURE),raw-first-guard)"
+
 feature-start:
 	@test -n "$(FEATURE)" || { echo 'FEATURE is required'; exit 2; }
+	@$(UV) python scripts/feature_resume.py --feature "$(FEATURE)" --fail-if-exists
 	@$(UV) python scripts/start_run.py --name "$(FEATURE)" --feature-dir "ai/features/$(FEATURE)"
 
 feature-baseline:

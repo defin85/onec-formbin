@@ -5,6 +5,14 @@
 - Read-only onboarding snapshot: `make codex-onboard`.
 - First safe process-layer verification: `make agent-verify`.
 
+## Autoresearch Continuation
+- Default product feature pack: `raw-first-guard`.
+- At the start of a new session or after context compaction, run `make feature-resume FEATURE=raw-first-guard` before starting a new run.
+- If `feature-resume` reports an existing run, continue that `RUN_ID` instead of calling `make feature-start`.
+- `make feature-start FEATURE=<feature-id>` is expected to fail closed when a prior run already exists for that feature.
+- Call `make feature-start FEATURE=<feature-id>` only when no prior run exists for that feature or when you are deliberately starting a new branch of work.
+- Treat `logs/runs/<run-id>/summary.md`, `logs/runs/<run-id>/results.jsonl`, and `logs/runs/<run-id>/loop-state.json` as the authoritative resume state.
+
 ## Language
 - Keep code, docs, and CLI messages in English.
 - Keep user-facing status updates concise.

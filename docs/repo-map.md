@@ -9,6 +9,7 @@ before reading code file-by-file.
 - `tests/`: fixture-backed behavior tests
 - `tests/fixtures/`: local `Form.bin` samples and support matrix
 - `docs/adr/0001-raw-first.md`: accepted raw-first architecture decision
+- `docs/workspace-contract.md`: source of truth for future workspace artifact names and schemas
 - `docs/agent/`: repo-local onboarding and review router for managed feature work
 - `automation/context/`: summary-first process map for agents
 - `scripts/qa/`: onboarding and process integrity entrypoints
@@ -28,6 +29,7 @@ before reading code file-by-file.
   - `diff`
   - `parse-form`
   - `build-form`
+  - `semantic-form`
 
 Edit this file when the command surface, options, exit codes, or user-visible
 messages change.
@@ -73,6 +75,24 @@ Responsibilities:
 
 This layer is intentionally separate from the main pack/unpack codec. Do not
 make raw container safety depend on AST semantics.
+
+### Experimental semantic-model workflow
+
+- `src/onec_formbin/semantic_form.py`
+- `src/onec_formbin/descriptor_json.py`
+
+Responsibilities:
+
+- build a stable semantic summary from a `Form.bin`, unpack dir, or `form.raw`;
+- decode known descriptor bodies into stable JSON summaries;
+- combine container metadata with AST-derived structure summaries;
+- stay explicitly narrower than full ordinary-form semantics.
+
+This layer is a summary/export layer on top of the current parser. Do not claim
+full semantic understanding unless new fixture-backed evidence exists.
+
+The canonical target artifact names and slice boundaries for this layer live in
+`docs/workspace-contract.md`.
 
 ## Change guidance
 

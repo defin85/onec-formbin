@@ -10,6 +10,7 @@ This directory is the agent-facing router for the eval-driven process layer in
 3. Read [docs/verification.md](../verification.md) for the repo's real checks.
 4. Read [docs/agent/architecture.md](architecture.md) for the process surface.
 5. Run the first safe verification path from [docs/agent/verify.md](verify.md).
+6. Resume the default product run with `make feature-resume FEATURE=raw-first-guard`.
 
 ## Authoritative Map
 
@@ -26,5 +27,6 @@ This directory is the agent-facing router for the eval-driven process layer in
 | What is the summary-first context layer? | [automation/context/hotspots-summary.generated.md](../../automation/context/hotspots-summary.generated.md) |
 | Which skills or workflows are relevant in the first hour? | [automation/context/recommended-skills.generated.md](../../automation/context/recommended-skills.generated.md) |
 | Where are feature packs stored? | [ai/features/README.md](../../ai/features/README.md) |
+| How should the latest autoresearch run be resumed? | [docs/agent/verify.md](verify.md) |
 | What is the read-only onboarding command? | `make codex-onboard` |
 | What is the baseline verification command? | `make agent-verify` |

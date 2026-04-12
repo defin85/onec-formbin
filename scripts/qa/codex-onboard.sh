@@ -32,6 +32,7 @@ cat <<'EOF'
 
 Next commands:
 - make agent-verify
+- make feature-resume [FEATURE=<feature-id>]
 - make validate-feature FEATURE=<feature-id>
 - make feature-start FEATURE=<feature-id>
 - make feature-baseline FEATURE=<feature-id> RUN_ID=<run-id>
