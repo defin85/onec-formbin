@@ -369,8 +369,8 @@ extended by `safe-semantic-edits-v1` for controlled writes, and consumed by
     - `owner_id`
     - `role`
   - current bridge exports AST string-node order while tagging the current
-    `form_title`, `event_handler`, `command_title`, and `control_name` items
-    with narrower ownership when fixture-backed;
+    `form_title`, `event_handler`, `command_name`, `command_title`, and
+    `control_name` items with narrower ownership when fixture-backed;
   - all remaining strings stay additive bridge items with coarse ownership.
 
 ## Initial Write Budget
@@ -383,7 +383,7 @@ The default mode is read-only. The current writable subset exposed by
 - `semantic/events.json`
   - `items[].handler` only for the current form-scope bridge items
 - `semantic/commands.json`
-  - `items[].title` only for the current command bridge items
+  - `items[].name` / `items[].title` only for the current command bridge items
 - `semantic/controls.tree.json`
   - `items[].name` / `items[].title` only for current explicit non-root control
     bridge items, and only when both fields stay in sync
@@ -392,8 +392,8 @@ The default mode is read-only. The current writable subset exposed by
     control-pattern bridge items, and only when both fields stay in sync
 - `semantic/strings.json`
   - `items[].value` only when the item is an alias for `form_title`,
-    `event_handler`, `command_title`, or current explicit `control_name` bridge
-    items
+    `event_handler`, `command_name`, `command_title`, or current explicit
+    `control_name` bridge items
 
 Everything else, including unsupported `attributes.json` fields, structural
 `controls.tree.json` fields, and `layout.json`, remains read-only until

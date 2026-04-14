@@ -226,14 +226,14 @@ Current guarantees:
 - works on the verified non-split unpack fixture path;
 - supports `semantic/form.meta.json.form_title`;
 - supports `semantic/events.json[].handler` for the current form-scope bridge;
-- supports `semantic/commands.json[].title` for the current command bridge;
+- supports `semantic/commands.json[].name/title` for the current command bridge;
 - supports direct `semantic/controls.tree.json[].name/title` edits for current
   explicit non-root control bridge items;
 - supports direct `semantic/attributes.json[].name/data_path` edits for current
   explicit control-pattern bridge items when both fields stay in sync;
 - supports `semantic/strings.json[].value` only when it aliases one of those
-  already-supported write paths or the current explicit `control_name` bridge
-  items.
+  already-supported write paths, including current command `name/title` aliases,
+  or the current explicit `control_name` bridge items.
 
 Current non-guarantees:
 - writes to split-form unpack workspaces;

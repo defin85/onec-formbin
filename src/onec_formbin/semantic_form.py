@@ -44,6 +44,7 @@ CONTROL_SCOPE = "control"
 COMMAND_SOURCE_AST_ROOT_TITLE_MATCH = "ast-root-title-match"
 FORM_TITLE_ROLE = "form_title"
 EVENT_HANDLER_ROLE = "event_handler"
+COMMAND_NAME_ROLE = "command_name"
 COMMAND_TITLE_ROLE = "command_title"
 CONTROL_NAME_ROLE = "control_name"
 AST_STRING_ROLE = "ast_string"
@@ -204,6 +205,7 @@ def build_strings_slice(
     for event in form_events:
         role_overrides[event["handler_path"]] = (EVENT_OWNER_KIND, event["id"], EVENT_HANDLER_ROLE)
     for command in commands:
+        role_overrides[command["name_path"]] = (COMMAND_OWNER_KIND, command["id"], COMMAND_NAME_ROLE)
         for title_path in command["title_paths"]:
             role_overrides[title_path] = (COMMAND_OWNER_KIND, command["id"], COMMAND_TITLE_ROLE)
     for name_path, control_id in control_name_paths.items():
@@ -400,6 +402,7 @@ def collect_command_details(node: AstNode, *, root_item_id: str) -> list[dict]:
                 "owner_id": root_item_id,
                 "source": COMMAND_SOURCE_AST_ROOT_TITLE_MATCH,
                 "path": path,
+                "name_path": (*path, 1),
                 "title_paths": deduped_title_paths,
             }
         )
@@ -1035,20 +1038,28 @@ def collect_command_edits(baseline: dict, desired: dict, *, command_details: lis
     for baseline_item, desired_item in zip(baseline_items, desired_items, strict=True):
         if baseline_item["id"] != desired_item.get("id"):
             raise ContainerError("Semantic edits require stable command item ordering and ids.")
-        for key in ("id", "name", "owner_id", "source"):
+        for key in ("id", "owner_id", "source"):
             if baseline_item[key] != desired_item.get(key):
-                raise ContainerError("Semantic edits currently support only commands.json[].title.")
-        if baseline_item["title"] == desired_item["title"]:
+                raise ContainerError("Semantic edits currently support only commands.json[].name/title.")
+        if baseline_item["name"] == desired_item["name"] and baseline_item["title"] == desired_item["title"]:
             continue
         detail = detail_by_id.get(baseline_item["id"])
         if detail is None:
             raise ContainerError(f"Cannot map semantic command {baseline_item['id']} back to the AST bridge.")
-        register_semantic_edit(
-            plan,
-            target_key=f"command:{baseline_item['id']}:title",
-            value=desired_item["title"],
-            paths=detail["title_paths"],
-        )
+        if baseline_item["name"] != desired_item["name"]:
+            register_semantic_edit(
+                plan,
+                target_key=f"command:{baseline_item['id']}:name",
+                value=desired_item["name"],
+                paths=[detail["name_path"]],
+            )
+        if baseline_item["title"] != desired_item["title"]:
+            register_semantic_edit(
+                plan,
+                target_key=f"command:{baseline_item['id']}:title",
+                value=desired_item["title"],
+                paths=detail["title_paths"],
+            )
 
 
 def collect_controls_tree_edits(
@@ -1145,7 +1156,8 @@ def collect_strings_edits(
         raise ContainerError("Semantic edits do not support adding or removing string items.")
 
     event_paths = {item["id"]: [item["handler_path"]] for item in event_details}
-    command_paths = {item["id"]: item["title_paths"] for item in command_details}
+    command_name_paths = {item["id"]: [item["name_path"]] for item in command_details}
+    command_title_paths = {item["id"]: item["title_paths"] for item in command_details}
     control_paths = {
         control_id: [path]
         for path, control_id in control_name_paths.items()
@@ -1182,8 +1194,19 @@ def collect_strings_edits(
                 paths=paths,
             )
             continue
+        if role == COMMAND_NAME_ROLE:
+            paths = command_name_paths.get(owner_id)
+            if not paths:
+                raise ContainerError(f"Cannot map strings command alias {owner_id} back to the current AST bridge.")
+            register_semantic_edit(
+                plan,
+                target_key=f"command:{owner_id}:name",
+                value=desired_item["value"],
+                paths=paths,
+            )
+            continue
         if role == COMMAND_TITLE_ROLE:
-            paths = command_paths.get(owner_id)
+            paths = command_title_paths.get(owner_id)
             if not paths:
                 raise ContainerError(f"Cannot map strings command alias {owner_id} back to the AST bridge.")
             register_semantic_edit(

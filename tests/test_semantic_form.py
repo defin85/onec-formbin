@@ -183,6 +183,15 @@ def test_build_semantic_model_reports_common_print_form_samples() -> None:
             "role": "event_handler",
         },
     ]
+    assert [item for item in model["semantic"]["strings.json"]["items"] if item["role"] == "command_name"] == [
+        {
+            "id": "string-1-2-2-2-2-1-7-5-4-1",
+            "value": "ПечататьВсе",
+            "owner_kind": "command",
+            "owner_id": "command-1-2-2-2-2-1-7-5-4",
+            "role": "command_name",
+        }
+    ]
     assert [item for item in model["semantic"]["strings.json"]["items"] if item["role"] == "command_title"] == [
         {
             "id": "string-1-2-2-2-2-1-7-5-4-2-2-2-1",
@@ -784,6 +793,63 @@ def test_apply_semantic_updates_command_title_workspace_and_repacked_form(tmp_pa
     ]
 
 
+def test_apply_semantic_updates_command_name_workspace_and_repacked_form(tmp_path: Path) -> None:
+    source = fixture_path("common-print-form.Form.bin")
+    unpack_dir = tmp_path / "unpack"
+    repacked = tmp_path / "edited.Form.bin"
+    unpack_file(source, unpack_dir)
+
+    commands_path = unpack_dir / "semantic" / "commands.json"
+    commands = json.loads(commands_path.read_text(encoding="utf-8"))
+    commands["items"][0]["name"] = "ПечататьВсе2"
+    write_json(commands_path, commands)
+
+    apply_semantic_workspace(unpack_dir)
+    pack_directory(unpack_dir, repacked)
+
+    model = build_semantic_model(repacked)
+    assert model["semantic"]["commands.json"]["items"][0] == {
+        "id": "command-1-2-2-2-2-1-7-5-4",
+        "name": "ПечататьВсе2",
+        "title": "Печатать все",
+        "owner_id": "form-root",
+        "source": "ast-root-title-match",
+    }
+
+
+def test_apply_semantic_updates_command_name_string_alias_and_repacked_form(tmp_path: Path) -> None:
+    source = fixture_path("common-print-form.Form.bin")
+    unpack_dir = tmp_path / "unpack"
+    repacked = tmp_path / "edited.Form.bin"
+    unpack_file(source, unpack_dir)
+
+    strings_path = unpack_dir / "semantic" / "strings.json"
+    strings = json.loads(strings_path.read_text(encoding="utf-8"))
+    target = next(
+        item
+        for item in strings["items"]
+        if item["role"] == "command_name" and item["owner_id"] == "command-1-2-2-2-2-1-7-5-4"
+    )
+    target["value"] = "ПечататьВсе3"
+    write_json(strings_path, strings)
+
+    apply_semantic_workspace(unpack_dir)
+    pack_directory(unpack_dir, repacked)
+
+    model = build_semantic_model(repacked)
+    assert model["semantic"]["commands.json"]["items"][0]["name"] == "ПечататьВсе3"
+    assert model["semantic"]["commands.json"]["items"][0]["title"] == "Печатать все"
+    assert string_items(model, value="ПечататьВсе3", role="command_name") == [
+        {
+            "id": "string-1-2-2-2-2-1-7-5-4-1",
+            "value": "ПечататьВсе3",
+            "owner_kind": "command",
+            "owner_id": "command-1-2-2-2-2-1-7-5-4",
+            "role": "command_name",
+        }
+    ]
+
+
 def test_apply_semantic_updates_event_handler_workspace_and_repacked_form(tmp_path: Path) -> None:
     source = fixture_path("common-print-form.Form.bin")
     unpack_dir = tmp_path / "unpack"
@@ -1049,7 +1115,7 @@ def test_apply_semantic_rejects_event_non_handler_changes(tmp_path: Path) -> Non
         apply_semantic_workspace(unpack_dir)
 
 
-def test_apply_semantic_rejects_command_non_title_changes(tmp_path: Path) -> None:
+def test_apply_semantic_rejects_command_source_changes(tmp_path: Path) -> None:
     source = fixture_path("common-print-form.Form.bin")
     unpack_dir = tmp_path / "unpack"
     unpack_file(source, unpack_dir)
@@ -1057,10 +1123,10 @@ def test_apply_semantic_rejects_command_non_title_changes(tmp_path: Path) -> Non
     mutate_workspace_json(
         unpack_dir,
         "commands.json",
-        lambda payload: payload["items"][0].__setitem__("name", "ПечататьВсеХ"),
+        lambda payload: payload["items"][0].__setitem__("source", "other"),
     )
 
-    with pytest.raises(ContainerError, match=r"commands\.json\[\]\.title"):
+    with pytest.raises(ContainerError, match=r"commands\.json\[\]\.name/title"):
         apply_semantic_workspace(unpack_dir)
 
 
@@ -1194,6 +1260,58 @@ def test_apply_semantic_cli_updates_command_title_and_repacked_form(tmp_path: Pa
 
     model = build_semantic_model(repacked)
     assert model["semantic"]["commands.json"]["items"][0]["title"] == "Печатать CLI"
+
+
+def test_apply_semantic_cli_updates_command_name_and_repacked_form(tmp_path: Path) -> None:
+    source = fixture_path("common-print-form.Form.bin")
+    unpack_dir = tmp_path / "unpack"
+    repacked = tmp_path / "edited.Form.bin"
+    unpack_file(source, unpack_dir)
+
+    mutate_workspace_json(
+        unpack_dir,
+        "commands.json",
+        lambda payload: payload["items"][0].__setitem__("name", "ПечататьВсеCLI"),
+    )
+
+    result = run_cli("apply-semantic", str(unpack_dir))
+    assert result.returncode == 0
+    assert result.stderr == ""
+    result = run_cli("pack", str(unpack_dir), "-o", str(repacked))
+    assert result.returncode == 0
+    assert result.stderr == ""
+
+    model = build_semantic_model(repacked)
+    assert model["semantic"]["commands.json"]["items"][0]["name"] == "ПечататьВсеCLI"
+    assert model["semantic"]["commands.json"]["items"][0]["title"] == "Печатать все"
+
+
+def test_apply_semantic_cli_updates_command_name_string_alias_and_repacked_form(tmp_path: Path) -> None:
+    source = fixture_path("common-print-form.Form.bin")
+    unpack_dir = tmp_path / "unpack"
+    repacked = tmp_path / "edited.Form.bin"
+    unpack_file(source, unpack_dir)
+
+    def mutate(payload: dict) -> None:
+        target = next(
+            item
+            for item in payload["items"]
+            if item["role"] == "command_name" and item["owner_id"] == "command-1-2-2-2-2-1-7-5-4"
+        )
+        target["value"] = "ПечататьВсеCLI2"
+
+    mutate_workspace_json(unpack_dir, "strings.json", mutate)
+
+    result = run_cli("apply-semantic", str(unpack_dir))
+    assert result.returncode == 0
+    assert result.stderr == ""
+    result = run_cli("pack", str(unpack_dir), "-o", str(repacked))
+    assert result.returncode == 0
+    assert result.stderr == ""
+
+    model = build_semantic_model(repacked)
+    assert model["semantic"]["commands.json"]["items"][0]["name"] == "ПечататьВсеCLI2"
+    assert model["semantic"]["commands.json"]["items"][0]["title"] == "Печатать все"
 
 
 def test_apply_semantic_cli_updates_event_handler_and_repacked_form(tmp_path: Path) -> None:

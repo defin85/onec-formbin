@@ -138,20 +138,20 @@ def test_apply_semantic_reports_event_name_edit_without_traceback(tmp_path: Path
     assert result.stderr == "error: Semantic edits currently support only events.json[].handler.\n"
 
 
-def test_apply_semantic_reports_command_name_edit_without_traceback(tmp_path: Path) -> None:
+def test_apply_semantic_reports_command_source_edit_without_traceback(tmp_path: Path) -> None:
     unpack_dir = tmp_path / "unpack"
     unpack_file(fixture_path("common-print-form.Form.bin"), unpack_dir)
     mutate_workspace_json(
         unpack_dir,
         "commands.json",
-        lambda payload: payload["items"][0].__setitem__("name", "ПечататьВсеХ"),
+        lambda payload: payload["items"][0].__setitem__("source", "other"),
     )
 
     result = run_cli("apply-semantic", str(unpack_dir))
 
     assert result.returncode == 2
     assert result.stdout == ""
-    assert result.stderr == "error: Semantic edits currently support only commands.json[].title.\n"
+    assert result.stderr == "error: Semantic edits currently support only commands.json[].name/title.\n"
 
 
 def test_apply_semantic_reports_unsupported_strings_role_without_traceback(tmp_path: Path) -> None:

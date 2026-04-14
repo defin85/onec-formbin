@@ -18,7 +18,7 @@ at a higher level.
   - raw diff and AST-rendered form diff coverage
   - AST canonical build fixed-point coverage
   - semantic-slice workspace materialization coverage
-  - safe semantic edit baseline coverage for form title, event handler, command title, control name, control-pattern attribute name/data_path, and supported string aliases
+  - safe semantic edit baseline coverage for form title, event handler, command name/title, control name, control-pattern attribute name/data_path, and supported string aliases
   - AST JSON round-trip coverage
   - descriptor JSON and semantic-model descriptor coverage
 - `i584-load-form.Form.bin`
