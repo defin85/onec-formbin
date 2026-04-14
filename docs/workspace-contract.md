@@ -253,9 +253,10 @@ cross-repo ingest. They do not replace the raw/container/semantic artifacts.
 
 ### `support/capabilities.json`
 
-- Status: `planned`
+- Status: `current`
 - Primary owner: `ordinary-form-bundle-v1`
 - Schema: `onec-formbin.bundle-capabilities.v1`
+- Current source: `formbin unpack`, refreshed by `formbin apply-semantic`
 - Contract:
   - declares the current workspace mode, supported write paths, and explicit
     read-only areas;
@@ -264,9 +265,10 @@ cross-repo ingest. They do not replace the raw/container/semantic artifacts.
 
 ### `support/provenance.json`
 
-- Status: `planned`
+- Status: `current`
 - Primary owner: `ordinary-form-bundle-v1`
 - Schema: `onec-formbin.bundle-provenance.v1`
+- Current source: `formbin unpack`, refreshed by `formbin apply-semantic`
 - Contract:
   - maps exported semantic ids and writable fields back to raw/container bridge
     anchors;
@@ -277,9 +279,10 @@ cross-repo ingest. They do not replace the raw/container/semantic artifacts.
 
 ### `support/uncertainty.json`
 
-- Status: `planned`
+- Status: `current`
 - Primary owner: `ordinary-form-bundle-v1`
 - Schema: `onec-formbin.bundle-uncertainty.v1`
+- Current source: `formbin unpack`, refreshed by `formbin apply-semantic`
 - Contract:
   - records coarse bridge confidence, read-only reasons, unsupported areas, and
     variant caveats that affect downstream consumers;
@@ -287,9 +290,10 @@ cross-repo ingest. They do not replace the raw/container/semantic artifacts.
 
 ### `support/integration.json`
 
-- Status: `planned`
+- Status: `current`
 - Primary owner: `ordinary-form-bundle-v1`
 - Schema: `onec-formbin.bundle-integration.v1`
+- Current source: `formbin unpack`, refreshed by `formbin apply-semantic`
 - Contract:
   - exposes the normalized external ingest surface for downstream semantic
     consumers;

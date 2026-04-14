@@ -88,6 +88,8 @@ Responsibilities:
 
 - build a stable semantic summary from a `Form.bin`, unpack dir, or `form.raw`;
 - materialize the current semantic slices into `semantic/*.json` during unpack;
+- materialize ordinary-form bundle support metadata into `support/*.json`
+  during unpack and semantic refresh;
 - apply the current narrow semantic write subset back to `records/*-form.raw`;
 - reuse the inspect/container backbone when it is already available in an
   unpack workspace;

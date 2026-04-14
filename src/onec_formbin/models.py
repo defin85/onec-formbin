@@ -21,6 +21,12 @@ SEMANTIC_SLICE_NAMES = (
     "layout.json",
     "strings.json",
 )
+SUPPORT_ARTIFACT_NAMES = (
+    "capabilities.json",
+    "provenance.json",
+    "uncertainty.json",
+    "integration.json",
+)
 
 
 class RecordKind(StrEnum):
@@ -145,3 +151,11 @@ def semantic_dir_path(directory: Path) -> Path:
 
 def semantic_slice_path(directory: Path, name: str) -> Path:
     return semantic_dir_path(directory) / name
+
+
+def support_dir_path(directory: Path) -> Path:
+    return directory / "support"
+
+
+def support_artifact_path(directory: Path, name: str) -> Path:
+    return support_dir_path(directory) / name

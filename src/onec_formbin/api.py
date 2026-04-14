@@ -16,6 +16,7 @@ from .models import (
     descriptor_json_path,
     manifest_path,
     semantic_slice_path,
+    support_artifact_path,
 )
 from .workspace import (
     read_manifest,
@@ -310,12 +311,16 @@ def export_workspace_descriptor_json(output_dir: Path, records: list) -> None:
 
 
 def export_workspace_semantic_json(source_path: Path, output_dir: Path) -> None:
-    from .semantic_form import build_semantic_model
+    from .semantic_form import build_workspace_bundle_artifacts
 
-    semantic = build_semantic_model(source_path)["semantic"]
+    bundle = build_workspace_bundle_artifacts(source_path)
+    semantic = bundle["semantic"]
     for name in SEMANTIC_SLICE_NAMES:
         artifact_path = semantic_slice_path(output_dir, name)
         write_workspace_descriptor_json(artifact_path, semantic[name])
+    for name, payload in bundle["support"].items():
+        artifact_path = support_artifact_path(output_dir, name)
+        write_workspace_descriptor_json(artifact_path, payload)
 
 
 def pack_directory(input_dir: Path, output_file: Path) -> None:

@@ -34,6 +34,15 @@ LAYOUT_SCHEMA = "onec-formbin.layout.v1"
 LAYOUT_VERSION = 1
 STRINGS_SCHEMA = "onec-formbin.strings.v1"
 STRINGS_VERSION = 1
+BUNDLE_CONTRACT_ID = "ordinary-form-bundle.v1"
+CAPABILITIES_SCHEMA = "onec-formbin.bundle-capabilities.v1"
+CAPABILITIES_VERSION = 1
+PROVENANCE_SCHEMA = "onec-formbin.bundle-provenance.v1"
+PROVENANCE_VERSION = 1
+UNCERTAINTY_SCHEMA = "onec-formbin.bundle-uncertainty.v1"
+UNCERTAINTY_VERSION = 1
+INTEGRATION_SCHEMA = "onec-formbin.bundle-integration.v1"
+INTEGRATION_VERSION = 1
 FORM_ROOT_ID = "form-root"
 FORM_OWNER_KIND = "form"
 EVENT_OWNER_KIND = "event"
@@ -50,6 +59,13 @@ CONTROL_NAME_ROLE = "control_name"
 AST_STRING_ROLE = "ast_string"
 CONTROL_KIND = "control"
 CONTROL_PATTERN_ROLE = "control_pattern_binding_candidate"
+WRITABLE_STRING_ROLES = {
+    FORM_TITLE_ROLE,
+    EVENT_HANDLER_ROLE,
+    COMMAND_NAME_ROLE,
+    COMMAND_TITLE_ROLE,
+    CONTROL_NAME_ROLE,
+}
 LOCALIZED_TITLE_MAX_DEPTH = 2
 TOP_LEVEL_FORM_EVENTS_INDEX = 4
 CONTROL_SECTION_PATH = (1, 2, 2)
@@ -58,18 +74,29 @@ CONTROL_NAME_INDEX = 4
 CONTROL_CHILDREN_INDEX = 5
 
 
-def build_semantic_model(path: Path) -> dict:
+def build_workspace_bundle_artifacts(path: Path) -> dict:
     node = parse_form_source(path)
     container_summary = summarize_container(path)
+    workspace_bundle = summarize_workspace_bundle(path, node, container_summary=container_summary)
+    return {
+        "container": container_summary,
+        "form_model": summarize_ast(node),
+        "semantic": workspace_bundle["semantic"],
+        "support": workspace_bundle["support"],
+    }
+
+
+def build_semantic_model(path: Path) -> dict:
+    workspace_bundle = build_workspace_bundle_artifacts(path)
     return {
         "semantic_version": SEMANTIC_VERSION,
         "source": {
             "path": str(path),
             "kind": detect_source_kind(path),
         },
-        "container": container_summary,
-        "form_model": summarize_ast(node),
-        "semantic": summarize_semantic_slices(path, node, container_summary=container_summary),
+        "container": workspace_bundle["container"],
+        "form_model": workspace_bundle["form_model"],
+        "semantic": workspace_bundle["semantic"],
     }
 
 
@@ -171,6 +198,559 @@ def summarize_semantic_slices(path: Path, node: AstNode, *, container_summary: d
             control_name_paths=controls["control_name_paths"],
         ),
     }
+
+
+def summarize_workspace_bundle(path: Path, node: AstNode, *, container_summary: dict) -> dict:
+    form_meta = build_form_meta_slice(path, node, container_summary=container_summary)
+    form_title_ref = extract_form_title_ref(node)
+    form_events = collect_form_event_details(node, root_item_id=form_meta["root_item_id"])
+    commands = collect_command_details(node, root_item_id=form_meta["root_item_id"])
+    controls = collect_control_bundle(
+        path,
+        node,
+        form_meta=form_meta,
+        command_details=commands,
+    )
+    semantic = {
+        "form.meta.json": form_meta,
+        "events.json": build_events_slice(form_events),
+        "commands.json": build_commands_slice(commands),
+        "attributes.json": controls["attributes"],
+        "controls.tree.json": controls["controls_tree"],
+        "layout.json": controls["layout"],
+        "strings.json": build_strings_slice(
+            node,
+            root_item_id=form_meta["root_item_id"],
+            form_title_ref=form_title_ref,
+            form_events=form_events,
+            commands=commands,
+            control_name_paths=controls["control_name_paths"],
+        ),
+    }
+    support = build_support_artifacts(
+        path,
+        container_summary=container_summary,
+        semantic=semantic,
+        form_title_ref=form_title_ref,
+        form_events=form_events,
+        commands=commands,
+        controls=controls,
+    )
+    return {
+        "semantic": semantic,
+        "support": support,
+    }
+
+
+def build_support_artifacts(
+    path: Path,
+    *,
+    container_summary: dict,
+    semantic: dict,
+    form_title_ref: tuple[str, tuple[int, ...]] | None,
+    form_events: list[dict],
+    commands: list[dict],
+    controls: dict,
+) -> dict:
+    return {
+        "capabilities.json": build_capabilities_artifact(
+            path,
+            container_summary=container_summary,
+            semantic=semantic,
+            form_title_ref=form_title_ref,
+            form_events=form_events,
+            commands=commands,
+            controls=controls,
+        ),
+        "provenance.json": build_provenance_artifact(
+            container_summary=container_summary,
+            semantic=semantic,
+            form_title_ref=form_title_ref,
+            form_events=form_events,
+            commands=commands,
+            controls=controls,
+        ),
+        "uncertainty.json": build_uncertainty_artifact(container_summary=container_summary),
+        "integration.json": build_integration_artifact(
+            path,
+            container_summary=container_summary,
+            semantic=semantic,
+        ),
+    }
+
+
+def build_capabilities_artifact(
+    path: Path,
+    *,
+    container_summary: dict,
+    semantic: dict,
+    form_title_ref: tuple[str, tuple[int, ...]] | None,
+    form_events: list[dict],
+    commands: list[dict],
+    controls: dict,
+) -> dict:
+    split_form = is_split_form_workspace(container_summary)
+    control_ids = set(controls["control_name_paths"].values())
+    editable_items: list[dict] = []
+
+    if not split_form:
+        if form_title_ref is not None:
+            editable_items.append(
+                {
+                    "semantic_file": "semantic/form.meta.json",
+                    "semantic_id": FORM_ROOT_ID,
+                    "fields": ["form_title"],
+                }
+            )
+        editable_items.extend(
+            {
+                "semantic_file": "semantic/events.json",
+                "semantic_id": item["id"],
+                "fields": ["handler"],
+            }
+            for item in form_events
+        )
+        editable_items.extend(
+            {
+                "semantic_file": "semantic/commands.json",
+                "semantic_id": item["id"],
+                "fields": ["name", "title"],
+            }
+            for item in commands
+        )
+        editable_items.extend(
+            {
+                "semantic_file": "semantic/controls.tree.json",
+                "semantic_id": item["id"],
+                "fields": ["name", "title"],
+                "field_sync_groups": [["name", "title"]],
+            }
+            for item in semantic["controls.tree.json"]["items"]
+            if item["id"] != FORM_ROOT_ID and item["id"] in control_ids
+        )
+        editable_items.extend(
+            {
+                "semantic_file": "semantic/attributes.json",
+                "semantic_id": item["id"],
+                "fields": ["name", "data_path"],
+                "field_sync_groups": [["name", "data_path"]],
+            }
+            for item in semantic["attributes.json"]["items"]
+        )
+        editable_items.extend(
+            {
+                "semantic_file": "semantic/strings.json",
+                "semantic_id": item["id"],
+                "fields": ["value"],
+                "role": item["role"],
+                "alias_of": build_string_alias_target(item),
+            }
+            for item in semantic["strings.json"]["items"]
+            if item["role"] in WRITABLE_STRING_ROLES
+        )
+
+    editable_items.sort(key=editable_item_sort_key)
+
+    read_only_rules = [
+        "semantic/layout.json remains read-only.",
+        "semantic/form.meta.json fields outside editable_items stay read-only.",
+        "semantic/events.json fields outside editable_items stay read-only.",
+        "semantic/commands.json fields outside editable_items stay read-only.",
+        "semantic/controls.tree.json structural fields stay read-only.",
+        "semantic/attributes.json fields outside editable_items stay read-only.",
+        "semantic/strings.json is writable only for alias roles listed in editable_items.",
+    ]
+    if split_form:
+        read_only_rules.insert(0, "Split-form workspaces are read-only for apply-semantic.")
+
+    return {
+        "schema": CAPABILITIES_SCHEMA,
+        "version": CAPABILITIES_VERSION,
+        "bundle_contract": BUNDLE_CONTRACT_ID,
+        "workspace_mode": "raw-first",
+        "source_kind": detect_source_kind(path),
+        "split_form": split_form,
+        "apply_semantic_supported": not split_form,
+        "editable_items": editable_items,
+        "read_only_files": ["semantic/layout.json"],
+        "write_constraints": [
+            "controls.tree.json editable items require name and title to stay in sync.",
+            "attributes.json editable items require name and data_path to stay in sync.",
+            "strings.json editable items are aliases for already-supported owner write paths.",
+        ],
+        "read_only_rules": read_only_rules,
+    }
+
+
+def build_provenance_artifact(
+    *,
+    container_summary: dict,
+    semantic: dict,
+    form_title_ref: tuple[str, tuple[int, ...]] | None,
+    form_events: list[dict],
+    commands: list[dict],
+    controls: dict,
+) -> dict:
+    split_form = is_split_form_workspace(container_summary)
+    write_support = "unsupported_split_form" if split_form else "supported"
+    alias_write_support = "unsupported_split_form" if split_form else "alias_supported"
+    anchor = current_form_record_anchor(container_summary)
+    control_paths = control_paths_by_id(controls["control_name_paths"])
+    items: list[dict] = []
+
+    if form_title_ref is not None:
+        items.append(
+            make_provenance_item(
+                semantic_file="semantic/form.meta.json",
+                semantic_id=FORM_ROOT_ID,
+                owner_kind=FORM_OWNER_KIND,
+                owner_id=FORM_ROOT_ID,
+                anchor=anchor,
+                fields={
+                    "form_title": build_field_provenance(
+                        [form_title_ref[1]],
+                        write_support=write_support,
+                    )
+                },
+            )
+        )
+
+    items.extend(
+        make_provenance_item(
+            semantic_file="semantic/events.json",
+            semantic_id=item["id"],
+            owner_kind=EVENT_OWNER_KIND,
+            owner_id=item["owner_id"],
+            anchor=anchor,
+            fields={
+                "handler": build_field_provenance(
+                    [item["handler_path"]],
+                    write_support=write_support,
+                )
+            },
+        )
+        for item in form_events
+    )
+
+    items.extend(
+        make_provenance_item(
+            semantic_file="semantic/commands.json",
+            semantic_id=item["id"],
+            owner_kind=COMMAND_OWNER_KIND,
+            owner_id=item["owner_id"],
+            anchor=anchor,
+            fields={
+                "name": build_field_provenance(
+                    [item["name_path"]],
+                    write_support=write_support,
+                ),
+                "title": build_field_provenance(
+                    item["title_paths"],
+                    write_support=write_support,
+                ),
+            },
+        )
+        for item in commands
+    )
+
+    items.extend(
+        make_provenance_item(
+            semantic_file="semantic/controls.tree.json",
+            semantic_id=item["id"],
+            owner_kind=CONTROL_OWNER_KIND,
+            owner_id=item["id"],
+            anchor=anchor,
+            fields={
+                "name": build_field_provenance(
+                    control_paths[item["id"]],
+                    write_support=write_support,
+                    coupled_with=["title"],
+                ),
+                "title": build_field_provenance(
+                    control_paths[item["id"]],
+                    write_support=write_support,
+                    coupled_with=["name"],
+                ),
+            },
+        )
+        for item in semantic["controls.tree.json"]["items"]
+        if item["id"] != FORM_ROOT_ID and item["id"] in control_paths
+    )
+
+    items.extend(
+        make_provenance_item(
+            semantic_file="semantic/attributes.json",
+            semantic_id=item["id"],
+            owner_kind="attribute",
+            owner_id=item["owner_id"],
+            anchor=anchor,
+            fields={
+                "name": build_field_provenance(
+                    control_paths[item["owner_id"]],
+                    write_support=write_support,
+                    coupled_with=["data_path"],
+                ),
+                "data_path": build_field_provenance(
+                    control_paths[item["owner_id"]],
+                    write_support=write_support,
+                    coupled_with=["name"],
+                ),
+            },
+        )
+        for item in semantic["attributes.json"]["items"]
+        if item["owner_id"] in control_paths
+    )
+
+    items.extend(
+        make_provenance_item(
+            semantic_file="semantic/strings.json",
+            semantic_id=item["id"],
+            owner_kind=item["owner_kind"],
+            owner_id=item["owner_id"],
+            anchor=anchor,
+            fields={
+                "value": build_field_provenance(
+                    [parse_item_path(item["id"], prefix="string")],
+                    write_support=alias_write_support,
+                    alias_of=build_string_alias_target(item),
+                    role=item["role"],
+                )
+            },
+        )
+        for item in semantic["strings.json"]["items"]
+        if item["role"] in WRITABLE_STRING_ROLES
+    )
+
+    items.sort(key=provenance_item_sort_key)
+    return {
+        "schema": PROVENANCE_SCHEMA,
+        "version": PROVENANCE_VERSION,
+        "bundle_contract": BUNDLE_CONTRACT_ID,
+        "items": items,
+    }
+
+
+def build_uncertainty_artifact(*, container_summary: dict) -> dict:
+    items = [
+        {
+            "scope": "semantic/events.json",
+            "effect": "partial_semantics",
+            "reason": "form_scope_and_current_control_binding_bridge_only",
+        },
+        {
+            "scope": "semantic/commands.json",
+            "effect": "partial_semantics",
+            "reason": "root_command_title_match_bridge_only",
+        },
+        {
+            "scope": "semantic/attributes.json",
+            "effect": "partial_semantics",
+            "reason": "control_pattern_binding_candidates_only",
+        },
+        {
+            "scope": "semantic/controls.tree.json",
+            "effect": "partial_semantics",
+            "reason": "explicit_control_wrappers_only",
+        },
+        {
+            "scope": "semantic/layout.json",
+            "effect": "read_only",
+            "reason": "coarse_layout_visibility_bridge_only",
+        },
+        {
+            "scope": "semantic/strings.json",
+            "effect": "partial_semantics",
+            "reason": "alias_roles_are_fixture_backed_subset_only",
+        },
+    ]
+    if is_split_form_workspace(container_summary):
+        items.insert(
+            0,
+            {
+                "scope": "workspace",
+                "effect": "write_unsupported",
+                "reason": "split_form_writeback_unavailable",
+            },
+        )
+    return {
+        "schema": UNCERTAINTY_SCHEMA,
+        "version": UNCERTAINTY_VERSION,
+        "items": items,
+    }
+
+
+def build_integration_artifact(path: Path, *, container_summary: dict, semantic: dict) -> dict:
+    return {
+        "schema": INTEGRATION_SCHEMA,
+        "version": INTEGRATION_VERSION,
+        "bundle_contract": BUNDLE_CONTRACT_ID,
+        "source_kind": detect_source_kind(path),
+        "preferred_entrypoint": "support/integration.json",
+        "preferred_ingest_files": [
+            "support/integration.json",
+            "support/uncertainty.json",
+            "semantic/form.meta.json",
+            "semantic/events.json",
+            "semantic/commands.json",
+            "semantic/attributes.json",
+            "semantic/controls.tree.json",
+            "semantic/layout.json",
+            "semantic/strings.json",
+        ],
+        "container": {
+            "record_count": container_summary.get("record_count", 0),
+            "split_form": is_split_form_workspace(container_summary),
+            "has_module_record": container_summary.get("module_record") is not None,
+        },
+        "form": {
+            "form_name": semantic["form.meta.json"]["form_name"],
+            "form_title": semantic["form.meta.json"]["form_title"],
+            "form_kind": semantic["form.meta.json"]["form_kind"],
+            "root_item_id": semantic["form.meta.json"]["root_item_id"],
+        },
+        "counts": {
+            "events": len(semantic["events.json"]["items"]),
+            "commands": len(semantic["commands.json"]["items"]),
+            "attributes": len(semantic["attributes.json"]["items"]),
+            "control_nodes": len(semantic["controls.tree.json"]["items"]),
+            "layout_items": len(semantic["layout.json"]["items"]),
+            "strings": len(semantic["strings.json"]["items"]),
+        },
+        "semantic_files": {
+            name: {
+                "path": f"semantic/{name}",
+                "schema": semantic[name]["schema"],
+                "version": semantic[name]["version"],
+            }
+            for name in SEMANTIC_SLICE_NAMES
+        },
+        "support_files": {
+            "capabilities.json": {
+                "path": "support/capabilities.json",
+                "schema": CAPABILITIES_SCHEMA,
+                "version": CAPABILITIES_VERSION,
+            },
+            "provenance.json": {
+                "path": "support/provenance.json",
+                "schema": PROVENANCE_SCHEMA,
+                "version": PROVENANCE_VERSION,
+            },
+            "uncertainty.json": {
+                "path": "support/uncertainty.json",
+                "schema": UNCERTAINTY_SCHEMA,
+                "version": UNCERTAINTY_VERSION,
+            },
+            "integration.json": {
+                "path": "support/integration.json",
+                "schema": INTEGRATION_SCHEMA,
+                "version": INTEGRATION_VERSION,
+            },
+        },
+    }
+
+
+def is_split_form_workspace(container_summary: dict) -> bool:
+    form_record = container_summary.get("form_record") or {}
+    return bool(form_record.get("split_form"))
+
+
+def current_form_record_anchor(container_summary: dict) -> dict:
+    form_record = container_summary.get("form_record") or {}
+    anchor: dict[str, int | str] = {}
+    if "index" in form_record:
+        anchor["record_index"] = form_record["index"]
+    if "relative_path" in form_record:
+        anchor["workspace_relative_path"] = form_record["relative_path"]
+    return anchor
+
+
+def editable_item_sort_key(item: dict) -> tuple:
+    return (
+        item["semantic_file"],
+        item["semantic_id"],
+        tuple(item["fields"]),
+        item.get("role", ""),
+    )
+
+
+def provenance_item_sort_key(item: dict) -> tuple:
+    return (item["semantic_file"], item["semantic_id"])
+
+
+def control_paths_by_id(control_name_paths: dict[tuple[int, ...], str]) -> dict[str, list[tuple[int, ...]]]:
+    grouped: dict[str, list[tuple[int, ...]]] = {}
+    for path, control_id in control_name_paths.items():
+        grouped.setdefault(control_id, []).append(path)
+    for paths in grouped.values():
+        paths.sort()
+    return grouped
+
+
+def make_provenance_item(
+    *,
+    semantic_file: str,
+    semantic_id: str,
+    owner_kind: str,
+    owner_id: str,
+    anchor: dict,
+    fields: dict,
+) -> dict:
+    item = {
+        "semantic_file": semantic_file,
+        "semantic_id": semantic_id,
+        "owner_kind": owner_kind,
+        "owner_id": owner_id,
+        "fields": fields,
+    }
+    item.update(anchor)
+    return item
+
+
+def build_field_provenance(
+    paths: list[tuple[int, ...]],
+    *,
+    write_support: str,
+    alias_of: str | None = None,
+    coupled_with: list[str] | None = None,
+    role: str | None = None,
+) -> dict:
+    payload = {
+        "ast_string_paths": [list(path) for path in paths],
+        "write_support": write_support,
+    }
+    if alias_of is not None:
+        payload["alias_of"] = alias_of
+    if coupled_with is not None:
+        payload["coupled_with"] = coupled_with
+    if role is not None:
+        payload["role"] = role
+    return payload
+
+
+def build_string_alias_target(item: dict) -> str:
+    role = item["role"]
+    owner_id = item["owner_id"]
+    if role == FORM_TITLE_ROLE:
+        return "form_title"
+    if role == EVENT_HANDLER_ROLE:
+        return f"event:{owner_id}:handler"
+    if role == COMMAND_NAME_ROLE:
+        return f"command:{owner_id}:name"
+    if role == COMMAND_TITLE_ROLE:
+        return f"command:{owner_id}:title"
+    if role == CONTROL_NAME_ROLE:
+        return f"control:{owner_id}:name"
+    raise ValueError(f"Unsupported writable string role: {role!r}")
+
+
+def parse_item_path(item_id: str, *, prefix: str) -> tuple[int, ...]:
+    expected_prefix = f"{prefix}-"
+    if item_id == f"{prefix}-root":
+        return ()
+    if not item_id.startswith(expected_prefix):
+        raise ValueError(f"Unexpected {prefix} item id: {item_id!r}")
+    suffix = item_id[len(expected_prefix) :]
+    return tuple(int(part) for part in suffix.split("-"))
 
 
 def build_form_meta_slice(path: Path, node: AstNode, *, container_summary: dict) -> dict:

@@ -202,6 +202,9 @@ Current guarantees:
   `semantic["events.json"]`, `semantic["commands.json"]`,
   `semantic["attributes.json"]`, `semantic["controls.tree.json"]`,
   `semantic["layout.json"]`, and `semantic["strings.json"]`;
+- unpack workspaces also materialize bundle support metadata as
+  `support/capabilities.json`, `support/provenance.json`,
+  `support/uncertainty.json`, and `support/integration.json`;
 - carries descriptor JSON summaries for known `form` and `module` descriptors;
 - reports AST-derived structure counts, top-level shape, and string samples;
 - works with split-form continuation on the verified fixture corpus.
@@ -220,7 +223,7 @@ Current non-guarantees:
 
 `apply-semantic` applies the current opt-in writable subset from an unpacked
 semantic workspace back into `records/*-form.raw` and then refreshes the
-materialized `semantic/*.json` slices.
+materialized `semantic/*.json` and `support/*.json` slices.
 
 Current guarantees:
 - works on the verified non-split unpack fixture path;

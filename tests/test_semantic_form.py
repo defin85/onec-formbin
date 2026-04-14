@@ -9,7 +9,12 @@ import pytest
 
 from onec_formbin.api import pack_directory, unpack_file
 from onec_formbin.container import ContainerError
-from onec_formbin.semantic_form import apply_semantic_workspace, build_semantic_model
+from onec_formbin.models import support_artifact_path
+from onec_formbin.semantic_form import (
+    apply_semantic_workspace,
+    build_semantic_model,
+    build_workspace_bundle_artifacts,
+)
 
 
 def fixture_path(name: str) -> Path:
@@ -667,11 +672,43 @@ def test_unpack_writes_semantic_slice_artifacts(tmp_path: Path) -> None:
     unpack_dir = tmp_path / "unpack"
     unpack_file(source, unpack_dir)
 
-    model = build_semantic_model(unpack_dir)
-    for name, payload in model["semantic"].items():
+    bundle = build_workspace_bundle_artifacts(unpack_dir)
+    for name, payload in bundle["semantic"].items():
         artifact = unpack_dir / "semantic" / name
         assert artifact.exists()
         assert json.loads(artifact.read_text(encoding="utf-8")) == payload
+    for name, payload in bundle["support"].items():
+        artifact = support_artifact_path(unpack_dir, name)
+        assert artifact.exists()
+        assert json.loads(artifact.read_text(encoding="utf-8")) == payload
+
+    capabilities = json.loads(support_artifact_path(unpack_dir, "capabilities.json").read_text(encoding="utf-8"))
+    assert capabilities["bundle_contract"] == "ordinary-form-bundle.v1"
+    assert capabilities["apply_semantic_supported"] is True
+    assert {
+        "semantic_file": "semantic/commands.json",
+        "semantic_id": "command-1-2-2-2-2-1-7-5-4",
+        "fields": ["name", "title"],
+    } in capabilities["editable_items"]
+
+    provenance = json.loads(support_artifact_path(unpack_dir, "provenance.json").read_text(encoding="utf-8"))
+    command_entry = next(
+        item
+        for item in provenance["items"]
+        if item["semantic_file"] == "semantic/commands.json"
+        and item["semantic_id"] == "command-1-2-2-2-2-1-7-5-4"
+    )
+    assert command_entry["fields"]["name"] == {
+        "ast_string_paths": [[1, 2, 2, 2, 2, 1, 7, 5, 4, 1]],
+        "write_support": "supported",
+    }
+    assert command_entry["fields"]["title"] == {
+        "ast_string_paths": [
+            [1, 2, 2, 2, 2, 1, 7, 5, 4, 2, 2, 2, 1],
+            [1, 2, 2, 2, 2, 1, 7, 9, 6, 4, 2, 1],
+        ],
+        "write_support": "supported",
+    }
 
 
 def test_unpack_materializes_control_event_binding_metadata(tmp_path: Path) -> None:
@@ -733,11 +770,27 @@ def test_unpack_writes_semantic_slice_artifacts_on_split_form_holdout(tmp_path: 
     unpack_dir = tmp_path / "unpack"
     unpack_file(source, unpack_dir)
 
-    model = build_semantic_model(unpack_dir)
-    for name, payload in model["semantic"].items():
+    bundle = build_workspace_bundle_artifacts(unpack_dir)
+    for name, payload in bundle["semantic"].items():
         artifact = unpack_dir / "semantic" / name
         assert artifact.exists()
         assert json.loads(artifact.read_text(encoding="utf-8")) == payload
+    for name, payload in bundle["support"].items():
+        artifact = support_artifact_path(unpack_dir, name)
+        assert artifact.exists()
+        assert json.loads(artifact.read_text(encoding="utf-8")) == payload
+
+    capabilities = json.loads(support_artifact_path(unpack_dir, "capabilities.json").read_text(encoding="utf-8"))
+    assert capabilities["split_form"] is True
+    assert capabilities["apply_semantic_supported"] is False
+    assert capabilities["editable_items"] == []
+
+    uncertainty = json.loads(support_artifact_path(unpack_dir, "uncertainty.json").read_text(encoding="utf-8"))
+    assert uncertainty["items"][0] == {
+        "scope": "workspace",
+        "effect": "write_unsupported",
+        "reason": "split_form_writeback_unavailable",
+    }
 
 
 def test_apply_semantic_updates_form_title_workspace_and_repacked_form(tmp_path: Path) -> None:

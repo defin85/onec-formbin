@@ -18,6 +18,7 @@ at a higher level.
   - raw diff and AST-rendered form diff coverage
   - AST canonical build fixed-point coverage
   - semantic-slice workspace materialization coverage
+  - support-artifact workspace materialization coverage
   - safe semantic edit baseline coverage for form title, event handler, command name/title, control name, control-pattern attribute name/data_path, and supported string aliases
   - AST JSON round-trip coverage
   - descriptor JSON and semantic-model descriptor coverage
@@ -29,6 +30,7 @@ at a higher level.
   - descriptor JSON holdout coverage
   - workspace descriptor artifact holdout coverage
   - split-form semantic export holdout coverage
+  - split-form support-artifact export holdout coverage
   - split-form `apply-semantic` rejection coverage
 
 ## Non-claims
