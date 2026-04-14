@@ -5,6 +5,8 @@ Use this feature pack for structured decoding of descriptor records.
 Current stage:
 - `inspect --json` exposes an experimental `descriptor_json` block for known
   `form` and `module` descriptors;
+- `unpack` writes matching `descriptors/*.descriptor.json` workspace artifacts
+  for those known descriptors;
 - `semantic-form` carries the same decoded descriptor summary;
 - the raw-first codec still treats descriptor bytes as lossless binary payload.
 

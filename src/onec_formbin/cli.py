@@ -5,26 +5,46 @@ from pathlib import Path
 
 import typer
 
-from .api import inspect_file, pack_directory, roundtrip_check, unpack_file
+from .api import inspect_file, pack_directory, roundtrip_check, unpack_file, write_inspect_json
 from .container import ContainerError
 from .diffing import diff_paths, render_diff_report
 from .form_ast import build_form_file, parse_form_source, write_ast_json
 from .models import FormRenderMode
-from .semantic_form import build_semantic_file
+from .semantic_form import apply_semantic_workspace, build_semantic_file
 
 app = typer.Typer(help="Inspect, unpack, and repack 1C Form.bin containers.")
+
+
+def format_os_error(exc: OSError) -> str:
+    path = exc.filename or str(exc)
+    if isinstance(exc, FileNotFoundError):
+        return f"Path does not exist: {path}."
+    if isinstance(exc, NotADirectoryError):
+        return f"Expected an unpack directory, got file: {path}."
+    if isinstance(exc, IsADirectoryError):
+        return f"Expected a file path, got directory: {path}."
+    if isinstance(exc, PermissionError):
+        return f"Permission denied: {path}."
+    return str(exc)
 
 
 @app.command("inspect")
 def inspect_command(
     path: Path,
     as_json: bool = typer.Option(False, "--json", help="Emit JSON."),
+    output: Path | None = typer.Option(None, "-o", "--output", help="Write JSON to a file."),
 ) -> None:
-    """Inspect container records."""
+    """Inspect container records or an unpack workspace inspect snapshot."""
     info = inspect_file(path)
     if as_json:
+        if output is not None:
+            write_inspect_json(output, info)
+            typer.echo(f"wrote inspect JSON to {output}")
+            return
         typer.echo(json.dumps(info, ensure_ascii=False, indent=2))
         return
+    if output is not None:
+        raise typer.BadParameter("--output requires --json")
 
     typer.echo(f"path: {info['path']}")
     typer.echo(f"records: {info['record_count']}")
@@ -71,7 +91,7 @@ def diff_command(
     form_mode: FormRenderMode = typer.Option(
         FormRenderMode.RAW,
         "--form-mode",
-        help="Render form payloads as raw brace text or experimental AST JSON.",
+        help="Render form payloads as raw brace text, experimental AST JSON, or semantic slice JSON.",
     ),
     context: int = typer.Option(3, "--context", min=0, help="Unified diff context lines."),
 ) -> None:
@@ -107,13 +127,24 @@ def semantic_form_command(path: Path, output: Path = typer.Option(..., "-o", "--
     typer.echo(f"wrote semantic model to {output}")
 
 
-def main() -> None:
+@app.command("apply-semantic")
+def apply_semantic_command(directory: Path) -> None:
+    """Apply supported semantic workspace edits back to the unpacked form.raw."""
+    apply_semantic_workspace(directory)
+    typer.echo(f"applied semantic edits in {directory}")
+
+
+def main() -> int:
     try:
         app()
+        return 0
     except ContainerError as exc:
         typer.echo(f"error: {exc}", err=True)
-        raise typer.Exit(code=2) from exc
+        return 2
+    except (FileNotFoundError, NotADirectoryError, IsADirectoryError, PermissionError) as exc:
+        typer.echo(f"error: {format_os_error(exc)}", err=True)
+        return 2
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

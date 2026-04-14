@@ -8,6 +8,7 @@ Cross-pack source of truth: `docs/workspace-contract.md`.
 Current stage:
 - `inspect --json` already exposes the stable baseline record list and
   descriptor JSON for known descriptor records;
+- `unpack` now materializes the same backbone as `container.inspect.json`;
 - the starter manifests keep the current inspect contract green while the
   richer workspace-facing shape is added.
 

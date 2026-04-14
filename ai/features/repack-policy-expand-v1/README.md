@@ -3,9 +3,9 @@
 Use this feature pack for roadmap work on expanding safe repack behavior.
 
 Current stage:
-- roadmap scaffold;
-- the starter manifests keep current mirror/preserve policy behavior green until
-  new safe policy cases are fixture-backed.
+- the pack now guards no-op repack plus the current verified mirror-safe module
+  and form payload edits on `common-print-form.Form.bin`;
+- preserve-policy refusal on the non-mirror holdout fixture remains protected.
 
 Target outcome:
 - support more safe size-changing edits where fields can be recomputed;

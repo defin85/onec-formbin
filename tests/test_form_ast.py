@@ -61,3 +61,21 @@ def test_ast_json_roundtrip_and_build_form(tmp_path: Path) -> None:
     assert ast_to_data(restored) == ast_to_data(node)
     assert ast_to_data(reparsed) == ast_to_data(node)
     assert ast_to_data(ast_from_data(ast_to_data(node))) == ast_to_data(node)
+
+
+def test_build_form_is_canonical_fixed_point_on_common_print_form(tmp_path: Path) -> None:
+    source = fixture_path("common-print-form.Form.bin")
+    ast_path = tmp_path / "form.ast.json"
+    raw_path = tmp_path / "rebuilt-form.raw"
+    reparsed_ast_path = tmp_path / "reparsed.ast.json"
+    rebuilt_again_path = tmp_path / "rebuilt-again.raw"
+
+    node = parse_form_source(source)
+    write_ast_json(ast_path, node)
+    build_form_file(ast_path, raw_path)
+
+    reparsed = parse_form_text(raw_path.read_text(encoding="utf-8"))
+    write_ast_json(reparsed_ast_path, reparsed)
+    build_form_file(reparsed_ast_path, rebuilt_again_path)
+
+    assert rebuilt_again_path.read_text(encoding="utf-8") == raw_path.read_text(encoding="utf-8")

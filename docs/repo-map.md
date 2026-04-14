@@ -22,7 +22,7 @@ before reading code file-by-file.
 
 - `src/onec_formbin/cli.py`
 - Commands:
-  - `inspect`
+  - `inspect` for `Form.bin` files and unpack dirs that contain `container.inspect.json`
   - `unpack`
   - `pack`
   - `roundtrip-check`
@@ -30,6 +30,7 @@ before reading code file-by-file.
   - `parse-form`
   - `build-form`
   - `semantic-form`
+  - `apply-semantic`
 
 Edit this file when the command surface, options, exit codes, or user-visible
 messages change.
@@ -59,7 +60,9 @@ Responsibilities:
 
 - load either packed files or unpack directories
 - compare metadata and payload bytes
-- render raw or AST-backed text diffs
+- render raw, AST-backed, or semantic-slice diffs
+- prefer materialized `semantic/*.json` workspace slices between unpack dirs
+  when raw form bytes are unchanged
 
 Edit this file when diff behavior, reporting, or form render modes change.
 
@@ -84,6 +87,10 @@ make raw container safety depend on AST semantics.
 Responsibilities:
 
 - build a stable semantic summary from a `Form.bin`, unpack dir, or `form.raw`;
+- materialize the current semantic slices into `semantic/*.json` during unpack;
+- apply the current narrow semantic write subset back to `records/*-form.raw`;
+- reuse the inspect/container backbone when it is already available in an
+  unpack workspace;
 - decode known descriptor bodies into stable JSON summaries;
 - combine container metadata with AST-derived structure summaries;
 - stay explicitly narrower than full ordinary-form semantics.

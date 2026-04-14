@@ -4,9 +4,10 @@ Use this feature pack for roadmap work on a disciplined support matrix for
 additional `Form.bin` variants.
 
 Current stage:
-- roadmap scaffold;
-- the starter manifests keep the current fixture matrix and workflow green
-  until new variant fixtures and wrapper commands are added.
+- the current three-fixture matrix is now mirrored explicitly across
+  `README.md`, `docs/verification.md`, and `tests/fixtures/README.md`;
+- the manifests keep that documented matrix green while new variants are still
+  out of scope.
 
 Target outcome:
 - add new fixture-backed variants without weakening existing guarantees;

@@ -4,9 +4,23 @@ Use this feature pack for roadmap work on CLI diagnostics, error reporting, and
 failure-path contracts.
 
 Current stage:
-- roadmap scaffold;
-- the starter manifests keep current success and failure-path exits green until
-  explicit diagnostics snapshots or output contracts are added.
+- the normal inspect success path remains covered;
+- missing-input `inspect` and wrong-path `apply-semantic` calls now produce
+  one-line CLI errors without traceback;
+- missing semantic workspace slices on `apply-semantic` now stay on the same
+  controlled error path;
+- unsupported `controls.tree.json[].event_bindings` edits on `apply-semantic`
+  now stay on the same controlled error path;
+- unsupported `layout.json` edits on `apply-semantic` now stay on the same
+  controlled error path;
+- unsupported `attributes.json.owner_id` edits on `apply-semantic` now stay on
+  the same controlled error path;
+- unsupported `form.meta.json` non-title edits, `events.json` non-handler
+  edits, `commands.json` non-title edits, and read-only `strings.json` role
+  edits on `apply-semantic` now stay on the same controlled error path;
+- `pack` on a directory without `manifest.json` now stays on the same
+  controlled workspace-validation path;
+- the preserve-policy holdout refusal remains the protected confirmation path.
 
 Target outcome:
 - clearer CLI failures for common user mistakes and unsupported edits;

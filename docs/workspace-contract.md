@@ -107,9 +107,12 @@ form-workspace/
 
 - Status: `bridge`
 - Primary owner: `inspect-rich-json-v1`
-- Current precursor: `formbin inspect --json`
+- Current source: `formbin unpack`
+- Equivalent JSON view: `formbin inspect --json`
+- Existing reader path: `formbin inspect <unpack-dir> --json`
 - Contract:
   - top-level object;
+  - written as `container.inspect.json` at the unpack root;
   - required baseline keys:
     - `path`
     - `prefix_sha256`
@@ -128,19 +131,54 @@ form-workspace/
     - `size_policy`
     - `pointer_record_index`
     - `body_sha256`
-  - known descriptor records may add `descriptor_json`;
-  - future fields must be additive and machine-readable, for example:
+  - current additive top-level summaries:
+    - `descriptor_links`
+    - `continuation_chains`
+    - `pointer_links`
+    - `record_layout`
+  - current additive per-record keys:
     - `codec`
     - `record_role`
-    - `continuation_chain`
-    - `linked_descriptor_index`
     - `workspace_relative_path`
+    - `linked_descriptor_index`
+    - `continuation_chain`
+  - known descriptor records may add `descriptor_json`;
+  - `descriptor_links` is an array of objects with:
+    - `label`
+    - `descriptor_index`
+    - `payload_index`
+  - `continuation_chains` is an array of objects with:
+    - `kind`
+    - `label`
+    - `head_record_index`
+    - `record_indices`
+  - `pointer_links` is an array of objects with:
+    - `source_record_index`
+    - `target_record_index`
+    - `target_header_start`
+    - `source_label`
+    - `target_label`
+  - `record_layout` is an object with:
+    - `prefix_size`
+    - `total_size`
+    - `record_spans`
+  - every `record_spans` item is an object with:
+    - `index`
+    - `header_start`
+    - `header_end`
+    - `body_start`
+    - `body_end`
+  - `linked_descriptor_index` points from a known `form` or `module` payload
+    record to its matching descriptor record when present;
+  - `continuation_chain` is either `null` or the ordered list of record indices
+    that participate in a split payload chain for that record;
+  - future fields must remain additive and machine-readable.
 
 ### `descriptors/form.descriptor.json`
 
-- Status: `planned`
+- Status: `bridge`
 - Primary owner: `descriptor-json-v1`, consumed by `inspect-rich-json-v1`
-- Current precursor: `descriptor_json` inside `inspect --json` and `semantic-form`
+- Current exporter: `formbin unpack`
 - Contract:
   - top-level object;
   - required keys:
@@ -161,12 +199,14 @@ form-workspace/
 
 ### `descriptors/module.descriptor.json`
 
-- Status: `planned`
+- Status: `bridge`
 - Primary owner: `descriptor-json-v1`, consumed by `inspect-rich-json-v1`
 - Contract:
   - same shape rules as `descriptors/form.descriptor.json`;
   - the artifact name is fixed even when the module record is absent, but the
-    file itself is only exported when a module descriptor exists.
+    file itself is only exported when a module descriptor exists;
+  - current workspace export must stay aligned with the inline `descriptor_json`
+    summaries exposed by `inspect --json` and `semantic-form`.
 
 ## Semantic Slice Artifacts
 
@@ -188,8 +228,9 @@ extended by `safe-semantic-edits-v1` for controlled writes, and consumed by
 
 ### `semantic/form.meta.json`
 
-- Status: `planned`
+- Status: `bridge`
 - Schema: `onec-formbin.form-meta.v1`
+- Current precursor: `semantic-form["semantic"]["form.meta.json"]`
 - Contract:
   - required keys:
     - `schema`
@@ -205,23 +246,28 @@ extended by `safe-semantic-edits-v1` for controlled writes, and consumed by
 
 ### `semantic/events.json`
 
-- Status: `planned`
+- Status: `bridge`
 - Schema: `onec-formbin.events.v1`
+- Current precursor: `semantic-form["semantic"]["events.json"]`
 - Contract:
   - required keys:
     - `schema`
     - `version`
     - `items`
   - `items` is an array of objects with:
+    - `id`
     - `name`
     - `handler`
     - `scope`
     - `owner_id`
+  - current bridge is limited to top-level form-scope events with
+    `owner_id = "form-root"` until control ownership is fixture-backed.
 
 ### `semantic/commands.json`
 
-- Status: `planned`
+- Status: `bridge`
 - Schema: `onec-formbin.commands.v1`
+- Current precursor: `semantic-form["semantic"]["commands.json"]`
 - Contract:
   - required keys:
     - `schema`
@@ -233,11 +279,16 @@ extended by `safe-semantic-edits-v1` for controlled writes, and consumed by
     - `title`
     - `owner_id`
     - `source`
+  - current bridge is limited to root command definitions that have a matching
+    action title in the same AST command section;
+  - current bridge exports coarse `owner_id = "form-root"` until control-level
+    ownership is fixture-backed.
 
 ### `semantic/attributes.json`
 
-- Status: `planned`
+- Status: `bridge`
 - Schema: `onec-formbin.attributes.v1`
+- Current precursor: `semantic-form["semantic"]["attributes.json"]`
 - Contract:
   - required keys:
     - `schema`
@@ -246,14 +297,23 @@ extended by `safe-semantic-edits-v1` for controlled writes, and consumed by
   - `items` is an array of objects with:
     - `id`
     - `name`
+    - `owner_id`
     - `data_path`
     - `type_hint`
     - `role`
+  - current bridge is limited to explicit control wrappers whose top-level
+    metadata carries an observed `Pattern` marker;
+  - `owner_id` points to the current `controls.tree.json` node that owns the
+    same explicit wrapper;
+  - for the current verified fixtures, `name` and `data_path` come from the
+    same explicit control-name source;
+  - `type_hint` is currently a raw marker-level hint such as `pattern:#`.
 
 ### `semantic/controls.tree.json`
 
-- Status: `planned`
+- Status: `bridge`
 - Schema: `onec-formbin.controls-tree.v1`
+- Current precursor: `semantic-form["semantic"]["controls.tree.json"]`
 - Contract:
   - required keys:
     - `schema`
@@ -267,12 +327,17 @@ extended by `safe-semantic-edits-v1` for controlled writes, and consumed by
     - `title`
     - `parent_id`
     - `child_ids`
+    - `command_ids`
+    - `event_bindings`
   - this file owns structure, parent/child hierarchy, and stable node ordering.
+  - current bridge is limited to explicit control wrappers observed in the
+    verified fixture corpus.
 
 ### `semantic/layout.json`
 
-- Status: `planned`
+- Status: `bridge`
 - Schema: `onec-formbin.layout.v1`
+- Current precursor: `semantic-form["semantic"]["layout.json"]`
 - Contract:
   - required keys:
     - `schema`
@@ -284,11 +349,14 @@ extended by `safe-semantic-edits-v1` for controlled writes, and consumed by
     - `order`
     - `group_kind`
     - `visibility`
+  - current bridge is limited to explicit control child lists with coarse
+    `visibility = "unknown"`.
 
 ### `semantic/strings.json`
 
-- Status: `planned`
+- Status: `bridge`
 - Schema: `onec-formbin.strings.v1`
+- Current precursor: `semantic-form["semantic"]["strings.json"]`
 - Contract:
   - required keys:
     - `schema`
@@ -300,24 +368,36 @@ extended by `safe-semantic-edits-v1` for controlled writes, and consumed by
     - `owner_kind`
     - `owner_id`
     - `role`
+  - current bridge exports AST string-node order while tagging the current
+    `form_title`, `event_handler`, `command_title`, and `control_name` items
+    with narrower ownership when fixture-backed;
+  - all remaining strings stay additive bridge items with coarse ownership.
 
 ## Initial Write Budget
 
-The default mode is read-only. When `safe-semantic-edits-v1` begins exposing
-write support, the intended initial writable subset is:
+The default mode is read-only. The current writable subset exposed by
+`safe-semantic-edits-v1` is:
 
 - `semantic/form.meta.json`
-  - display-oriented top-level properties only
+  - `form_title` only
 - `semantic/events.json`
-  - handler names only
+  - `items[].handler` only for the current form-scope bridge items
 - `semantic/commands.json`
-  - command titles only
+  - `items[].title` only for the current command bridge items
 - `semantic/controls.tree.json`
-  - selected labels, visibility flags, and child order in known containers
+  - `items[].name` / `items[].title` only for current explicit non-root control
+    bridge items, and only when both fields stay in sync
+- `semantic/attributes.json`
+  - `items[].name` / `items[].data_path` only for current explicit
+    control-pattern bridge items, and only when both fields stay in sync
 - `semantic/strings.json`
-  - string values
+  - `items[].value` only when the item is an alias for `form_title`,
+    `event_handler`, `command_title`, or current explicit `control_name` bridge
+    items
 
-Everything else stays read-only until fixture-backed evidence justifies it.
+Everything else, including unsupported `attributes.json` fields, structural
+`controls.tree.json` fields, and `layout.json`, remains read-only until
+fixture-backed evidence justifies it.
 
 ## Diff Contract
 
@@ -328,4 +408,8 @@ The target semantic diff output must:
 - stay deterministic;
 - preserve the current raw and AST diff modes as fallbacks;
 - report changes per semantic slice instead of flattening everything into one
-  prose-only blob.
+  prose-only blob;
+- prefer materialized `semantic/*.json` workspace slices when diffing unpack
+  dirs whose raw form payload is unchanged;
+- fall back to rebuilt semantic slices from the raw form payload when the raw
+  form bytes changed or materialized semantic slices are absent.

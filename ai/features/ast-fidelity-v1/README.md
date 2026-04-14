@@ -4,9 +4,10 @@ Use this feature pack for roadmap work on improving the fidelity of the
 `parse-form` / `build-form` cycle.
 
 Current stage:
-- roadmap scaffold;
-- the starter manifests keep structural AST roundtrip green until dedicated
-  fidelity metrics and expected outputs are added.
+- the pack now guards structural AST roundtrip plus a first canonical-build
+  fixed-point check on `common-print-form.Form.bin`;
+- fidelity work is still explicitly short of byte-identical source rebuild
+  claims.
 
 Target outcome:
 - reduce churn between parsed and rebuilt `form.raw`;

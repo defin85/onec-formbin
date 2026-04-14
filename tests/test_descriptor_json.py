@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
-from onec_formbin.api import inspect_file
+from onec_formbin.api import inspect_file, unpack_file
+from onec_formbin.models import descriptor_json_path
 from onec_formbin.semantic_form import build_semantic_model
 
 
@@ -60,3 +62,29 @@ def test_inspect_file_includes_descriptor_json_on_split_form_holdout() -> None:
     assert module_descriptor["format"] == "u64-pair-utf16le-v1"
     assert module_descriptor["name_utf16le"] == "module"
     assert form_descriptor["field_a_u64_le"] == module_descriptor["field_a_u64_le"]
+
+
+def test_unpack_writes_descriptor_json_artifacts(tmp_path: Path) -> None:
+    source = fixture_path("common-print-form.Form.bin")
+    info = inspect_file(source)
+    unpack_dir = tmp_path / "unpack"
+    unpack_file(source, unpack_dir)
+
+    form_descriptor = json.loads(descriptor_json_path(unpack_dir, "form").read_text(encoding="utf-8"))
+    module_descriptor = json.loads(descriptor_json_path(unpack_dir, "module").read_text(encoding="utf-8"))
+
+    assert form_descriptor == descriptor_record(info, "form")["descriptor_json"]
+    assert module_descriptor == descriptor_record(info, "module")["descriptor_json"]
+
+
+def test_unpack_writes_descriptor_json_artifacts_on_split_form_holdout(tmp_path: Path) -> None:
+    source = fixture_path("i584-load-form.Form.bin")
+    info = inspect_file(source)
+    unpack_dir = tmp_path / "unpack"
+    unpack_file(source, unpack_dir)
+
+    form_descriptor = json.loads(descriptor_json_path(unpack_dir, "form").read_text(encoding="utf-8"))
+    module_descriptor = json.loads(descriptor_json_path(unpack_dir, "module").read_text(encoding="utf-8"))
+
+    assert form_descriptor == descriptor_record(info, "form")["descriptor_json"]
+    assert module_descriptor == descriptor_record(info, "module")["descriptor_json"]

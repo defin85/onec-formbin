@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import difflib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,8 +12,16 @@ from .form_ast import (
     ast_to_pretty_json,
     parse_form_text,
 )
-from .models import FormRenderMode, ManifestRecord, RecordKind, SizePolicy
-from .workspace import read_manifest, read_record_body
+from .models import (
+    FormRenderMode,
+    ManifestRecord,
+    RecordKind,
+    SEMANTIC_SLICE_NAMES,
+    SizePolicy,
+    semantic_slice_path,
+)
+from .semantic_form import build_semantic_model
+from .workspace import read_manifest, read_record_body, read_text_exact
 
 
 @dataclass(slots=True)
@@ -92,16 +101,21 @@ def diff_paths(
         render_mode = None
         if left_record.is_text and right_record.is_text:
             render_mode = form_mode.value if left_record.kind is RecordKind.FORM else "raw"
-            left_render, right_render, notes = render_payloads_for_diff(
-                left_record, right_record, form_mode=form_mode
-            )
-            body_diff = unified_text_diff(
-                left_render,
-                right_render,
-                fromfile=f"{left}:{left_record.relative_path}",
-                tofile=f"{right}:{right_record.relative_path}",
-                context=context,
-            )
+            if not (left_record.kind is RecordKind.FORM and form_mode is FormRenderMode.SEMANTIC):
+                left_render, right_render, notes = render_payloads_for_diff(
+                    left_record,
+                    right_record,
+                    left_source_path=left_view.path,
+                    right_source_path=right_view.path,
+                    form_mode=form_mode,
+                )
+                body_diff = unified_text_diff(
+                    left_render,
+                    right_render,
+                    fromfile=f"{left}:{left_record.relative_path}",
+                    tofile=f"{right}:{right_record.relative_path}",
+                    context=context,
+                )
 
         changed_records.append(
             {
@@ -115,6 +129,53 @@ def diff_paths(
                 "body_diff": body_diff,
             }
         )
+
+    semantic_diff_text = ""
+    semantic_notes: list[str] = []
+    if form_mode is FormRenderMode.SEMANTIC:
+        form_change = next(
+            (
+                record
+                for record in changed_records
+                if record["left"] is not None
+                and record["right"] is not None
+                and record["left"]["label"] == "form"
+                and record["right"]["label"] == "form"
+            ),
+            None,
+        )
+        try:
+            semantic_diff_text, semantic_notes = render_semantic_slice_diffs(
+                left_view.path,
+                right_view.path,
+                context=context,
+                prefer_workspace=(
+                    form_change is None
+                    or (not form_change["body_changed"] and not form_change["metadata_changed"])
+                ),
+            )
+        except FormAstError as exc:
+            semantic_notes = [f"form semantic build failed, semantic diff unavailable: {exc}"]
+
+        if form_change is not None:
+            form_change["render_mode"] = "semantic"
+            form_change["body_diff"] = semantic_diff_text
+            form_change["notes"] = semantic_notes
+        elif semantic_diff_text:
+            left_form = next((record for record in left_view.records if record.kind is RecordKind.FORM), None)
+            right_form = next((record for record in right_view.records if record.kind is RecordKind.FORM), None)
+            changed_records.append(
+                {
+                    "index": left_form.index if left_form is not None else right_form.index,
+                    "left": record_summary(left_form),
+                    "right": record_summary(right_form),
+                    "metadata_changed": [],
+                    "body_changed": False,
+                    "render_mode": "semantic",
+                    "notes": ["semantic workspace slices changed without raw form payload changes"],
+                    "body_diff": semantic_diff_text,
+                }
+            )
 
     identical = (
         left_view.prefix_sha256 == right_view.prefix_sha256
@@ -248,6 +309,8 @@ def render_payloads_for_diff(
     left: SourceRecord,
     right: SourceRecord,
     *,
+    left_source_path: Path,
+    right_source_path: Path,
     form_mode: FormRenderMode,
 ) -> tuple[str, str, list[str]]:
     if (
@@ -263,6 +326,69 @@ def render_payloads_for_diff(
             note = f"form AST parse failed, raw diff shown: {exc}"
             return left.text, right.text, [note]
     return left.text, right.text, []
+
+
+def render_semantic_slice_diffs(
+    left_source_path: Path,
+    right_source_path: Path,
+    *,
+    context: int,
+    prefer_workspace: bool,
+) -> tuple[str, list[str]]:
+    left_semantic = load_semantic_slices_for_diff(left_source_path, prefer_workspace=prefer_workspace)
+    right_semantic = load_semantic_slices_for_diff(right_source_path, prefer_workspace=prefer_workspace)
+
+    parts: list[str] = []
+    for key in sorted(set(left_semantic) | set(right_semantic)):
+        left_text = render_semantic_slice(left_semantic.get(key))
+        right_text = render_semantic_slice(right_semantic.get(key))
+        diff = unified_text_diff(
+            left_text,
+            right_text,
+            fromfile=f"semantic/{key}:left",
+            tofile=f"semantic/{key}:right",
+            context=context,
+        )
+        if not diff:
+            continue
+        if parts:
+            parts.append("\n")
+        parts.append(f"### semantic/{key}\n")
+        parts.append(diff)
+
+    notes: list[str] = []
+    if not parts:
+        notes.append("semantic slices identical; raw form text changed")
+    return "".join(parts), notes
+
+
+def render_semantic_slice(payload: object) -> str:
+    return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+
+
+def load_semantic_slices_for_diff(path: Path, *, prefer_workspace: bool) -> dict:
+    if not path.is_dir() or not prefer_workspace:
+        return build_semantic_model(path)["semantic"]
+
+    workspace_slices: dict[str, object] = {}
+    fallback_semantic: dict | None = None
+    found_workspace_slice = False
+    for name in SEMANTIC_SLICE_NAMES:
+        slice_path = semantic_slice_path(path, name)
+        if slice_path.exists():
+            found_workspace_slice = True
+            try:
+                workspace_slices[name] = json.loads(read_text_exact(slice_path))
+            except json.JSONDecodeError as exc:
+                raise ContainerError(f"Invalid semantic JSON at {slice_path}.") from exc
+            continue
+        if fallback_semantic is None:
+            fallback_semantic = build_semantic_model(path)["semantic"]
+        workspace_slices[name] = fallback_semantic[name]
+
+    if found_workspace_slice:
+        return workspace_slices
+    return build_semantic_model(path)["semantic"]
 
 
 def unified_text_diff(

@@ -6,9 +6,34 @@ LLM-editable workspace.
 Cross-pack source of truth: `docs/workspace-contract.md`.
 
 Current stage:
-- roadmap scaffold;
-- the starter manifests keep the current raw and AST diff workflow green until
-  semantic diff fixtures and expected outputs are added.
+- `formbin diff --form-mode semantic` can render the current semantic slices
+  for form payload changes;
+- the same mode can now diff materialized `semantic/*.json` workspace edits
+  between unpack dirs before `apply-semantic`, while still preferring rebuilt
+  semantic slices when raw form payloads changed;
+- pending `form.meta.json` workspace edits are now guarded explicitly as
+  reviewable per-slice hunks before `apply-semantic`;
+- pending `controls.tree.json` workspace edits are now guarded explicitly as
+  reviewable per-slice hunks before `apply-semantic`, including richer
+  control-event binding metadata edits, without leaking derived
+  `attributes.json` or `strings.json` before apply;
+- pending `attributes.json` workspace edits are now guarded explicitly as
+  reviewable per-slice hunks before `apply-semantic`, without leaking derived
+  `controls.tree.json` or `strings.json` before apply;
+- pending `layout.json` workspace edits are now guarded explicitly as
+  reviewable per-slice hunks before `apply-semantic`;
+- pending `events.json` workspace edits are now guarded explicitly as
+  reviewable per-slice hunks before `apply-semantic`;
+- pending `commands.json` workspace edits are now guarded explicitly as
+  reviewable per-slice hunks before `apply-semantic`, without leaking derived
+  `controls.tree.json` or `strings.json` before apply;
+- pending `strings.json` workspace edits are now guarded explicitly as
+  reviewable per-slice hunks before `apply-semantic`, including current
+  supported alias batches that should not leak derived `form.meta.json`,
+  `events.json`, or `commands.json` hunks before apply;
+- the manifests keep the current raw and AST diff workflow green alongside the
+  new semantic render mode;
+- split-form identical-input diff checks stay green in semantic mode.
 
 Target outcome:
 - compare forms at a semantic level instead of only raw text or AST JSON;

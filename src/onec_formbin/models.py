@@ -12,6 +12,15 @@ SENTINEL = 0x7FFFFFFF
 UTF8_BOM = b"\xef\xbb\xbf"
 FORM_UTF16 = b"f\x00o\x00r\x00m\x00"
 MODULE_UTF16 = b"m\x00o\x00d\x00u\x00l\x00e\x00"
+SEMANTIC_SLICE_NAMES = (
+    "form.meta.json",
+    "events.json",
+    "commands.json",
+    "attributes.json",
+    "controls.tree.json",
+    "layout.json",
+    "strings.json",
+)
 
 
 class RecordKind(StrEnum):
@@ -30,6 +39,7 @@ class SizePolicy(StrEnum):
 class FormRenderMode(StrEnum):
     RAW = "raw"
     AST = "ast"
+    SEMANTIC = "semantic"
 
 
 @dataclass(slots=True)
@@ -119,3 +129,19 @@ class PackedRecord:
 
 def manifest_path(directory: Path) -> Path:
     return directory / "manifest.json"
+
+
+def container_inspect_path(directory: Path) -> Path:
+    return directory / "container.inspect.json"
+
+
+def descriptor_json_path(directory: Path, label: str) -> Path:
+    return directory / "descriptors" / f"{label}.descriptor.json"
+
+
+def semantic_dir_path(directory: Path) -> Path:
+    return directory / "semantic"
+
+
+def semantic_slice_path(directory: Path, name: str) -> Path:
+    return semantic_dir_path(directory) / name
