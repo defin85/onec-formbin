@@ -12,11 +12,11 @@ This pack is responsible for evolving toward:
 
 Current verified baseline inside this pack:
 - `unpack` already writes the current container backbone, descriptor JSON, and
-  semantic slice artifacts on the verified fixtures;
+  semantic/support workspace artifacts on the verified fixtures;
 - `semantic-form` already matches between a source `Form.bin` and its unpacked
   workspace on the baseline fixture;
-- `apply-semantic` already supports a narrow fixture-backed edit subset and
-  fails closed on split-form workspaces.
+- `apply-semantic` already refreshes the current support artifacts after the
+  supported edit subset and still fails closed on split-form workspaces.
 
 Use this pack when a change touches:
 - `docs/workspace-contract.md`

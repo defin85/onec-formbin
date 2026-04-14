@@ -61,6 +61,10 @@ Run both after any behavior change.
   - run `uv run pytest tests/test_inspect_json.py tests/test_descriptor_json.py`
 - Semantic-model changes:
   - run `uv run pytest tests/test_semantic_form.py`
+- Ordinary-form bundle changes:
+  - run `uv run pytest 'tests/test_semantic_form.py::test_unpack_writes_semantic_slice_artifacts' -q`
+  - run `uv run pytest 'tests/test_semantic_form.py::test_build_workspace_bundle_support_matches_between_bin_and_unpacked_dir' -q`
+  - run `uv run pytest 'tests/test_semantic_form.py::test_apply_semantic_refreshes_support_artifacts_after_form_title_edit' -q`
 - Safe semantic edit changes:
   - run `uv run pytest tests/test_semantic_form.py`
   - run an unpack/edit/apply/pack CLI smoke on `common-print-form.Form.bin`

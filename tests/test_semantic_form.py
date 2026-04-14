@@ -667,6 +667,45 @@ def test_build_semantic_model_matches_between_bin_and_unpacked_dir(tmp_path: Pat
     assert from_bin["form_model"] == from_dir["form_model"]
 
 
+def test_build_workspace_bundle_support_matches_between_bin_and_unpacked_dir(tmp_path: Path) -> None:
+    source = fixture_path("common-print-form.Form.bin")
+    unpack_dir = tmp_path / "unpack"
+    unpack_file(source, unpack_dir)
+
+    from_bin = build_workspace_bundle_artifacts(source)
+    from_dir = build_workspace_bundle_artifacts(unpack_dir)
+
+    assert from_bin["container"] == from_dir["container"]
+    assert from_bin["semantic"] == from_dir["semantic"]
+    bin_support = json.loads(json.dumps(from_bin["support"], ensure_ascii=False))
+    dir_support = json.loads(json.dumps(from_dir["support"], ensure_ascii=False))
+    bin_support["capabilities.json"].pop("source_kind")
+    dir_support["capabilities.json"].pop("source_kind")
+    bin_support["integration.json"].pop("source_kind")
+    dir_support["integration.json"].pop("source_kind")
+    assert bin_support == dir_support
+    assert from_bin["support"]["capabilities.json"]["source_kind"] == "form_bin"
+    assert from_dir["support"]["capabilities.json"]["source_kind"] == "unpack_dir"
+    assert from_bin["support"]["integration.json"]["source_kind"] == "form_bin"
+    assert from_dir["support"]["integration.json"]["source_kind"] == "unpack_dir"
+    assert from_bin["support"]["integration.json"]["bundle_contract"] == "ordinary-form-bundle.v1"
+    assert from_bin["support"]["capabilities.json"]["apply_semantic_supported"] is True
+    assert from_bin["support"]["integration.json"]["form"] == {
+        "form_name": "common-print-form",
+        "form_title": "Печать",
+        "form_kind": "ordinary",
+        "root_item_id": "form-root",
+    }
+    assert from_bin["support"]["integration.json"]["counts"] == {
+        "events": len(from_bin["semantic"]["events.json"]["items"]),
+        "commands": len(from_bin["semantic"]["commands.json"]["items"]),
+        "attributes": len(from_bin["semantic"]["attributes.json"]["items"]),
+        "control_nodes": len(from_bin["semantic"]["controls.tree.json"]["items"]),
+        "layout_items": len(from_bin["semantic"]["layout.json"]["items"]),
+        "strings": len(from_bin["semantic"]["strings.json"]["items"]),
+    }
+
+
 def test_unpack_writes_semantic_slice_artifacts(tmp_path: Path) -> None:
     source = fixture_path("common-print-form.Form.bin")
     unpack_dir = tmp_path / "unpack"
@@ -810,6 +849,62 @@ def test_apply_semantic_updates_form_title_workspace_and_repacked_form(tmp_path:
     model = build_semantic_model(repacked)
     assert model["semantic"]["form.meta.json"]["form_title"] == "Печать2"
     assert string_items(model, value="Печать2", role="form_title")
+
+
+def test_apply_semantic_refreshes_support_artifacts_after_form_title_edit(tmp_path: Path) -> None:
+    source = fixture_path("common-print-form.Form.bin")
+    unpack_dir = tmp_path / "unpack"
+    unpack_file(source, unpack_dir)
+
+    capabilities_before = json.loads(
+        support_artifact_path(unpack_dir, "capabilities.json").read_text(encoding="utf-8")
+    )
+    provenance_before = json.loads(
+        support_artifact_path(unpack_dir, "provenance.json").read_text(encoding="utf-8")
+    )
+    uncertainty_before = json.loads(
+        support_artifact_path(unpack_dir, "uncertainty.json").read_text(encoding="utf-8")
+    )
+
+    meta_path = unpack_dir / "semantic" / "form.meta.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    meta["form_title"] = "Печать bundle"
+    write_json(meta_path, meta)
+
+    apply_semantic_workspace(unpack_dir)
+
+    capabilities_after = json.loads(
+        support_artifact_path(unpack_dir, "capabilities.json").read_text(encoding="utf-8")
+    )
+    provenance_after = json.loads(
+        support_artifact_path(unpack_dir, "provenance.json").read_text(encoding="utf-8")
+    )
+    uncertainty_after = json.loads(
+        support_artifact_path(unpack_dir, "uncertainty.json").read_text(encoding="utf-8")
+    )
+    integration_after = json.loads(
+        support_artifact_path(unpack_dir, "integration.json").read_text(encoding="utf-8")
+    )
+
+    assert capabilities_after == capabilities_before
+    assert provenance_after == provenance_before
+    assert uncertainty_after == uncertainty_before
+    assert integration_after["form"] == {
+        "form_name": "common-print-form",
+        "form_title": "Печать bundle",
+        "form_kind": "ordinary",
+        "root_item_id": "form-root",
+    }
+    refreshed_bundle = build_workspace_bundle_artifacts(unpack_dir)
+    assert integration_after["counts"] == {
+        "events": len(refreshed_bundle["semantic"]["events.json"]["items"]),
+        "commands": len(refreshed_bundle["semantic"]["commands.json"]["items"]),
+        "attributes": len(refreshed_bundle["semantic"]["attributes.json"]["items"]),
+        "control_nodes": len(refreshed_bundle["semantic"]["controls.tree.json"]["items"]),
+        "layout_items": len(refreshed_bundle["semantic"]["layout.json"]["items"]),
+        "strings": len(refreshed_bundle["semantic"]["strings.json"]["items"]),
+    }
+    assert refreshed_bundle["support"]["integration.json"] == integration_after
 
 
 def test_apply_semantic_updates_command_title_workspace_and_repacked_form(tmp_path: Path) -> None:

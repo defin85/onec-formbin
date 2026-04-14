@@ -8,8 +8,9 @@ Cross-pack source of truth: `docs/workspace-contract.md`.
 Current stage:
 - the current raw/container/descriptor/semantic workspace ladder already exists;
 - narrow semantic writes are still owned by `safe-semantic-edits-v1`;
-- this pack fixes the public `ordinary-form-bundle.v1` contract and its support
-  metadata without weakening the raw-first safety boundary.
+- the public `ordinary-form-bundle.v1` contract and `support/*.json` metadata
+  now materialize during `unpack` and refresh during supported
+  `apply-semantic` flows without weakening the raw-first safety boundary.
 
 Target outcome:
 - publish a versioned ordinary-form workspace bundle rooted at
@@ -19,8 +20,8 @@ Target outcome:
   `bsl-gradual-types`.
 
 Split intent:
-- `dev.jsonl`: guard the baseline bundle backbone, semantic slices, and current
-  pack-safe edit/apply path on the editable fixture;
+- `dev.jsonl`: guard the baseline bundle backbone, support metadata, and
+  current pack-safe edit/apply path on the editable fixture;
 - `holdout.jsonl`: confirm split-form readability and fail-closed behavior on
   the verified holdout fixture.
 
