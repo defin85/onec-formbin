@@ -24,6 +24,8 @@ Planned roadmap packs:
 - `safe-semantic-edits-v1`: narrow, explicit writes from semantic workspace
   slices back to raw artifacts with raw-first safety.
 - `semantic-diff-v1`: semantic form diff for workspace slices beyond raw and AST renderings.
+- `ordinary-form-bundle-v1`: public versioned ordinary-form workspace bundle
+  contract for agent editing and external ingest.
 - `variant-support-matrix-v1`: fixture-backed rollout of additional container variants.
 - `repack-policy-expand-v1`: more safe repack cases backed by fixture evidence.
 - `ast-fidelity-v1`: better rebuild fidelity for `parse-form` / `build-form`.
@@ -34,6 +36,8 @@ LLM-editable workspace ladder:
 2. `form-semantic-model-v1` exports semantic slices.
 3. `safe-semantic-edits-v1` makes a narrow subset of those slices writable.
 4. `semantic-diff-v1` diffs those slices for review and regression control.
+5. `ordinary-form-bundle-v1` fixes the external `ordinary-form-bundle.v1`
+   contract and support metadata for cross-repo consumers.
 
 Cross-pack source of truth:
 - `docs/workspace-contract.md` fixes the canonical artifact names, ownership

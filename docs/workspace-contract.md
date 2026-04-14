@@ -1,12 +1,13 @@
 # Workspace Contract
 
-This document is the source of truth for the future LLM-editable workspace for
-ordinary-form `Form.bin` inputs.
+This document is the source of truth for the LLM-editable workspace and public
+versioned bundle contract for ordinary-form `Form.bin` inputs.
 
 It defines:
 - canonical artifact names;
 - pack ownership boundaries;
 - minimum schema expectations;
+- the public external bundle name and version boundary;
 - the current status of each artifact.
 
 It does not claim that every artifact already exists today.
@@ -32,8 +33,30 @@ It does not claim that every artifact already exists today.
   they do not replace the raw artifacts.
 - Semantic write support is opt-in and owned only by `safe-semantic-edits-v1`.
   All semantic artifacts are read-only by default.
+- Cross-repo consumers must bind only to the documented bundle contract and
+  file-level schemas in this document, not to internal Python objects or ad hoc
+  AST traversal details.
 - If a pack changes a canonical artifact name or meaning, update this document
   in the same change.
+
+## Public External Bundle Contract
+
+- Public bundle id: `ordinary-form-bundle.v1`
+- Primary owner: `ordinary-form-bundle-v1`
+- Intended use:
+  - agent-readable export/edit/apply/pack workspace for ordinary forms;
+  - versioned external input for downstream consumers such as
+    `bsl-gradual-types`.
+- Contract boundary:
+  - the bundle is a directory rooted at `form-workspace/`;
+  - external consumers may rely on the canonical layout and file-local schemas
+    documented here;
+  - additive fields are allowed in existing JSON artifacts;
+  - unknown fields must be ignored unless a file-local schema says otherwise;
+  - unsupported writes must fail closed according to the current writable budget
+    and future `support/capabilities.json`;
+  - external ingest must not depend on internal AST path conventions except
+    where they are explicitly exported through `support/provenance.json`.
 
 ## Canonical Layout
 
@@ -49,6 +72,11 @@ form-workspace/
 │   └── module.bsl
 ├── ast/
 │   └── form.ast.json
+├── support/
+│   ├── capabilities.json
+│   ├── provenance.json
+│   ├── uncertainty.json
+│   └── integration.json
 └── semantic/
     ├── form.meta.json
     ├── events.json
@@ -207,6 +235,68 @@ form-workspace/
     file itself is only exported when a module descriptor exists;
   - current workspace export must stay aligned with the inline `descriptor_json`
     summaries exposed by `inspect --json` and `semantic-form`.
+
+## Support Artifacts
+
+Support artifacts stabilize the public bundle boundary for agent edits and
+cross-repo ingest. They do not replace the raw/container/semantic artifacts.
+
+### Common Support Rules
+
+- Every `support/*.json` artifact is a top-level object.
+- Every artifact must contain:
+  - `schema`
+  - `version`
+- Support metadata must stay deterministic for the same exported workspace.
+- Support metadata may reference semantic ids and workspace-relative paths, but
+  it must not require consumers to read private Python state.
+
+### `support/capabilities.json`
+
+- Status: `planned`
+- Primary owner: `ordinary-form-bundle-v1`
+- Schema: `onec-formbin.bundle-capabilities.v1`
+- Contract:
+  - declares the current workspace mode, supported write paths, and explicit
+    read-only areas;
+  - must be the machine-readable allowlist for semantic write support;
+  - must stay aligned with the writable budget documented in this file.
+
+### `support/provenance.json`
+
+- Status: `planned`
+- Primary owner: `ordinary-form-bundle-v1`
+- Schema: `onec-formbin.bundle-provenance.v1`
+- Contract:
+  - maps exported semantic ids and writable fields back to raw/container bridge
+    anchors;
+  - may expose record indices, workspace-relative paths, and AST paths when
+    that is required for deterministic write-back;
+  - is the only supported place where AST-path-like write-back anchors may
+    cross the public bundle boundary.
+
+### `support/uncertainty.json`
+
+- Status: `planned`
+- Primary owner: `ordinary-form-bundle-v1`
+- Schema: `onec-formbin.bundle-uncertainty.v1`
+- Contract:
+  - records coarse bridge confidence, read-only reasons, unsupported areas, and
+    variant caveats that affect downstream consumers;
+  - keeps partial or heuristic semantics explicit instead of implied.
+
+### `support/integration.json`
+
+- Status: `planned`
+- Primary owner: `ordinary-form-bundle-v1`
+- Schema: `onec-formbin.bundle-integration.v1`
+- Contract:
+  - exposes the normalized external ingest surface for downstream semantic
+    consumers;
+  - must reference `ordinary-form-bundle.v1` and the bundle-local schema
+    versions it was built from;
+  - must not require downstream consumers to parse raw artifacts or internal AST
+    bridge details just to consume ordinary-form semantics.
 
 ## Semantic Slice Artifacts
 
